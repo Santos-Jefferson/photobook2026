@@ -5,6 +5,7 @@ export default function StoryViewer({ book, onExit }) {
   const slides = useMemo(() => buildSlides(book), [book])
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)
   const touch = useRef({ x: 0, y: 0, t: 0 })
 
   const total = slides.length
@@ -58,6 +59,15 @@ export default function StoryViewer({ book, onExit }) {
       <button className="viewer-close" aria-label="Close" onClick={onExit}>
         ×
       </button>
+      <button className="viewer-debug" aria-label="Debug" onClick={() => setShowDebug((s) => !s)}>
+        {'{}'}
+      </button>
+
+      {showDebug && (
+        <div className="debug" onClick={() => setShowDebug(false)}>
+          <pre onClick={(e) => e.stopPropagation()}>{JSON.stringify(book, null, 2)}</pre>
+        </div>
+      )}
 
       <Slide slide={slide} revealed={revealed} />
 
@@ -113,12 +123,26 @@ function Slide({ slide, revealed }) {
   }
 
   // photo slide
+  return <PhotoSlide slide={slide} revealed={revealed} />
+}
+
+function PhotoSlide({ slide, revealed }) {
+  const [imgError, setImgError] = useState(false)
+  const hasImage = slide.image && !imgError
+
   return (
     <div className={`slide slide-photo ${revealed ? 'in' : ''}`}>
-      {slide.image ? (
-        <img className="slide-img" src={slide.image} alt={slide.caption || `Page ${slide.page}`} />
+      {hasImage ? (
+        <img
+          className="slide-img"
+          src={slide.image}
+          alt={slide.caption || `Page ${slide.page}`}
+          onError={() => setImgError(true)}
+        />
       ) : (
-        <div className="slide-img slide-img-missing" />
+        <div className="slide-img slide-img-missing">
+          {slide.image ? <span className="img-warn">Image failed to load</span> : null}
+        </div>
       )}
       <div className="scrim" />
       <div className="slide-caption">

@@ -306,6 +306,11 @@ button {
   background: rgba(255, 107, 107, 0.12);
   border: 1px solid rgba(255, 107, 107, 0.4);
   color: #ffb3b3;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 40vh;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
 }
 
 .cta {
@@ -424,6 +429,76 @@ button {
   color: #fff;
   font-size: 22px;
   line-height: 1;
+}
+
+.viewer-debug {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: 14px;
+  z-index: 30;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  border: none;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+}
+.debug {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 60px 14px 20px;
+  overflow: auto;
+}
+.debug pre {
+  color: #9af59a;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.img-warn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ff9b9b;
+  font-size: 13px;
+}
+
+.fatal {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+.fatal h2 {
+  color: #ffb3b3;
+}
+.fatal pre {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #e7e4dc;
+  overflow: auto;
+}
+.cta-inline {
+  margin-top: 16px;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-weight: 700;
+  color: #1a1208;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
 }
 
 .tapzone {
