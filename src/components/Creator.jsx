@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { VIBES, STYLES, MAX_PHOTOS, DEFAULT_API_URL } from '../config'
-import { fileToBase64, getApiUrl, setApiUrl } from '../api'
+import { fileToBase64, getApiUrl, setApiUrl, getApiKey, setApiKey } from '../api'
 
 let uid = 0
 
@@ -15,6 +15,7 @@ export default function Creator({ onGenerate, error, buildPayload }) {
   const [busy, setBusy] = useState(false)
 
   const [apiUrl, setUrl] = useState(getApiUrl())
+  const [apiKey, setKey] = useState(getApiKey())
   const [demo, setDemo] = useState(!getApiUrl())
   const [showSettings, setShowSettings] = useState(false)
 
@@ -60,6 +61,7 @@ export default function Creator({ onGenerate, error, buildPayload }) {
     setBusy(true)
     try {
       setApiUrl(demo ? '' : apiUrl)
+      setApiKey(apiKey)
       const photosBase64 = await Promise.all(photos.map((p) => fileToBase64(p.file)))
       const previewDataUrls = await Promise.all(photos.map((p) => fileToDataUrl(p.file)))
       const payload = buildPayload({
@@ -258,6 +260,17 @@ export default function Creator({ onGenerate, error, buildPayload }) {
                 disabled={demo}
                 placeholder={DEFAULT_API_URL || 'https://your-server.example.com/api/photobook'}
                 onChange={(e) => setUrl(e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>API key (Bearer token)</span>
+              <input
+                type="password"
+                value={apiKey}
+                disabled={demo}
+                placeholder="dev-secret"
+                autoComplete="off"
+                onChange={(e) => setKey(e.target.value)}
               />
             </label>
             <p className="muted small">

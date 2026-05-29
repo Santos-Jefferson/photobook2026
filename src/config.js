@@ -8,6 +8,10 @@ export const DEFAULT_API_URL =
   import.meta.env.VITE_PHOTOBOOK_API_URL ||
   'https://genius-narration-api.use.eks.mcap.sip.dev.cloud.synchronoss.net/v1/genius/photobook'
 
+// Bearer token sent as `Authorization: Bearer <key>`. Defaults to the dev key;
+// override via env var or the in-app API settings (stored in the browser).
+export const DEFAULT_API_KEY = import.meta.env.VITE_PHOTOBOOK_API_KEY || 'dev-secret'
+
 export const VIBES = [
   'heartwarming',
   'nostalgic',

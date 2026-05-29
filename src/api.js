@@ -1,6 +1,7 @@
-import { DEFAULT_API_URL } from './config'
+import { DEFAULT_API_URL, DEFAULT_API_KEY } from './config'
 
 const API_URL_KEY = 'photobook.apiUrl'
+const API_KEY_KEY = 'photobook.apiKey'
 
 export function getApiUrl() {
   return localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL
@@ -9,6 +10,15 @@ export function getApiUrl() {
 export function setApiUrl(url) {
   if (url) localStorage.setItem(API_URL_KEY, url)
   else localStorage.removeItem(API_URL_KEY)
+}
+
+export function getApiKey() {
+  return localStorage.getItem(API_KEY_KEY) ?? DEFAULT_API_KEY
+}
+
+export function setApiKey(key) {
+  if (key) localStorage.setItem(API_KEY_KEY, key)
+  else localStorage.removeItem(API_KEY_KEY)
 }
 
 // Read a File into a raw base64 string (no data: prefix), which is what the
@@ -46,9 +56,13 @@ export async function generatePhotoBook(payload, { signal } = {}) {
     throw new Error('No API URL configured. Add it in the API settings, or use the demo mode.')
   }
 
+  const key = getApiKey()
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(key ? { Authorization: `Bearer ${key}` } : {}),
+    },
     body: JSON.stringify(payload),
     signal,
   })
