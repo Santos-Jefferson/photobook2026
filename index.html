@@ -8,7 +8,15 @@
     <title>Photobook · Stories from your photos</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Visible fallback: React replaces this on mount. If you see this text
+         frozen, the app's JS never ran. If you see a totally BLANK/BLACK page
+         (not even this text), you're loading a stale or empty build. -->
+    <div id="root">
+      <div style="padding:40px;font-family:system-ui,sans-serif;color:#f4f1ea;text-align:center">
+        <h2 style="color:#ffd36b">Loading Photobook…</h2>
+        <p style="color:#9a98a8">build 2026-05-29 · if this message stays, the app script failed to load.</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

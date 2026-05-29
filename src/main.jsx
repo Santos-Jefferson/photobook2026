@@ -15,12 +15,18 @@ function showFatalOverlay(title, message) {
   if (!el) {
     el = document.createElement('div')
     el.id = 'fatal-overlay'
-    el.className = 'fatal'
+    // Inline styles so the overlay is visible even if the stylesheet failed to
+    // load — we never want the diagnostic itself to be a black screen.
+    el.style.cssText =
+      'position:fixed;inset:0;z-index:99999;overflow:auto;padding:32px;' +
+      'background:#1a0d0d;color:#ffd9d9;font:14px/1.5 ui-monospace,monospace'
     document.body.appendChild(el)
   }
   const h2 = document.createElement('h2')
+  h2.style.cssText = 'color:#ff8a8a;margin:0 0 12px'
   h2.textContent = title
   const pre = document.createElement('pre')
+  pre.style.cssText = 'white-space:pre-wrap;word-break:break-word;margin:0'
   pre.textContent = message
   el.replaceChildren(h2, pre)
 }
@@ -34,6 +40,8 @@ window.addEventListener('unhandledrejection', (e) => {
   console.error('[Photobook] unhandled promise rejection:', e.reason)
   showFatalOverlay('Something broke (unhandled rejection)', String(e.reason?.stack || e.reason))
 })
+
+console.log('[Photobook] boot · build 2026-05-29 · diagnostics enabled')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
