@@ -36,6 +36,16 @@ export default function App() {
         return
       }
 
+      if (result.__truncationWarnings?.length > 0) {
+        console.warn('[Photobook] truncation detected:', result.__truncationWarnings)
+        setError(
+          'The story content appears incomplete or corrupted. The API may have had issues generating the full content.\n\n' +
+            'Warnings: ' + result.__truncationWarnings.join(', '),
+        )
+        setView('error')
+        return
+      }
+
       setBook(result)
       setView('story')
     } catch (err) {
