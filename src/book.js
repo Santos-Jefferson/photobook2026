@@ -66,15 +66,21 @@ export function normalizeBook(raw) {
 
 export function buildSlides(book) {
   const slides = []
+  const safe = book && typeof book === 'object' ? book : {}
 
   slides.push({
     type: 'opening',
-    title: book.title,
-    text: book.opening,
-    vibe: book.vibe,
+    title: safe.title,
+    text: safe.opening,
+    vibe: safe.vibe,
   })
 
-  for (const p of book.pages || []) {
+  // Be defensive: the API might hand back `pages` as something other than an
+  // array (or omit it). Anything non-iterable here would throw during render
+  // and blank the screen.
+  const pages = Array.isArray(safe.pages) ? safe.pages : []
+  for (const p of pages) {
+    if (!p || typeof p !== 'object') continue
     slides.push({
       type: 'photo',
       page: p.page,
@@ -87,8 +93,8 @@ export function buildSlides(book) {
 
   slides.push({
     type: 'closing',
-    title: book.title,
-    text: book.closing,
+    title: safe.title,
+    text: safe.closing,
   })
 
   return slides
