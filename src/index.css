@@ -706,8 +706,13 @@ button {
     border-radius: 22px;
     top: 20px;
     bottom: 20px;
-    inset: 20px auto;
+    /* Center a fixed-width column. Without an explicit width the viewer would
+       collapse to zero: all its children are position:absolute, so there's no
+       in-flow content to give it width once left/right aren't both 0, leaving
+       only the black body background (the "black screen"). */
     left: 50%;
+    right: auto;
+    width: min(var(--maxw), calc(100% - 40px));
     transform: translateX(-50%);
   }
 }
