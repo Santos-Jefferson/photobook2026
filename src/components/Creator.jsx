@@ -9,7 +9,7 @@ export default function Creator({ onGenerate, error, buildPayload }) {
   const [title, setTitle] = useState('')
   const [context, setContext] = useState('')
   const [vibe, setVibe] = useState(VIBES[0])
-  const [style, setStyle] = useState(STYLES[0])
+  const [style, setStyle] = useState(STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0])
   const [stylize, setStylize] = useState(true)
   const [busy, setBusy] = useState(false)
 

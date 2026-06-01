@@ -12,16 +12,9 @@ export const DEFAULT_API_URL =
 // override via env var or the in-app API settings (stored in the browser).
 export const DEFAULT_API_KEY = import.meta.env.VITE_PHOTOBOOK_API_KEY || 'dev-secret'
 
-export const VIBES = [
-  'heartwarming',
-  'nostalgic',
-  'adventurous',
-  'playful',
-  'romantic',
-  'dramatic',
-  'peaceful',
-  'epic',
-]
+// Vibes the API supports — must match the server's catalog exactly or it
+// returns a 400 ("Invalid vibe ...").
+export const VIBES = ['heartwarming', 'nostalgic', 'poetic', 'funny', 'minimal', 'epic']
 
 // Image styles the API supports — must match the server's catalog exactly or
 // it returns a 400 ("Invalid style ...").
