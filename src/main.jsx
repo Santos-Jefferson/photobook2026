@@ -41,7 +41,7 @@ window.addEventListener('unhandledrejection', (e) => {
   showFatalOverlay('Something broke (unhandled rejection)', String(e.reason?.stack || e.reason))
 })
 
-console.log('[Photobook] boot · build 2026-05-29 · diagnostics enabled')
+console.log('[Photobook] boot · build 2026-06-01 · capsyl-style light theme')
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -1,17 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  --bg: #0d0d12;
-  --bg-soft: #15151d;
-  --card: #1b1b25;
-  --card-2: #20202c;
-  --line: #2c2c3a;
-  --text: #f4f1ea;
-  --muted: #9a98a8;
-  --accent: #ff8a5c;
-  --accent-2: #ffd36b;
-  --danger: #ff6b6b;
-  --radius: 18px;
-  --maxw: 540px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Capsyl-inspired light theme: white surfaces, charcoal text, teal-blue
+     accent, soft shadows, generous rounding. */
+  --bg: #ffffff;
+  --bg-soft: #f4f7fb;
+  --card: #ffffff;
+  --card-2: #ffffff;
+  --line: #e6ecf2;
+  --text: #16202c;
+  --muted: #64748b;
+  --accent: #0aa1dd;
+  --accent-2: #14c8b0;
+  --accent-strong: #0784b8;
+  --danger: #e5484d;
+  --radius: 20px;
+  --shadow: 0 10px 30px rgba(15, 45, 75, 0.08);
+  --shadow-soft: 0 4px 16px rgba(15, 45, 75, 0.06);
+  --maxw: 560px;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
 }
 
 * {
@@ -26,7 +34,8 @@ body,
 
 body {
   margin: 0;
-  background: radial-gradient(120% 80% at 50% -10%, #1d1b2e 0%, var(--bg) 55%);
+  background: linear-gradient(180deg, #eaf4fb 0%, #f7fafc 28%, #ffffff 60%);
+  background-attachment: fixed;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
@@ -41,41 +50,49 @@ button {
 .creator {
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 28px 18px 120px;
+  padding: 40px 18px 120px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
+.creator-head {
+  text-align: center;
+  margin-bottom: 6px;
+}
 .creator-head h1 {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 30px;
-  margin: 0 0 6px;
-  letter-spacing: -0.02em;
+  justify-content: center;
+  gap: 12px;
+  font-size: 34px;
+  margin: 0 0 10px;
+  letter-spacing: -0.03em;
+  font-weight: 800;
 }
 
 .logo-dot {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 0 22px rgba(255, 138, 92, 0.7);
+  box-shadow: 0 4px 14px rgba(10, 161, 221, 0.45);
 }
 
 .creator-head p {
   color: var(--muted);
-  margin: 0;
-  line-height: 1.5;
-  max-width: 42ch;
+  margin: 0 auto;
+  line-height: 1.55;
+  max-width: 44ch;
+  font-size: 16px;
 }
 
 .card {
-  background: linear-gradient(180deg, var(--card), var(--card-2));
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow-soft);
 }
 
 .card-title {
@@ -86,11 +103,12 @@ button {
 }
 
 .card-title h2 {
-  font-size: 16px;
+  font-size: 13px;
   margin: 0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #d9d6cf;
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .muted {
@@ -104,17 +122,17 @@ button {
 /* dropzone + thumbs */
 .dropzone {
   border: 1.5px dashed var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 10px;
   transition: border-color 0.2s, background 0.2s;
 }
 .dropzone:not(.has-photos) {
   cursor: pointer;
-  padding: 34px 16px;
+  padding: 38px 16px;
 }
 .dropzone:not(.has-photos):hover {
   border-color: var(--accent);
-  background: rgba(255, 138, 92, 0.05);
+  background: rgba(10, 161, 221, 0.05);
 }
 
 .dropzone-empty {
@@ -125,18 +143,19 @@ button {
   gap: 4px;
 }
 .dropzone-icon {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   font-size: 26px;
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent);
+  background: rgba(10, 161, 221, 0.1);
   margin-bottom: 6px;
 }
 .dropzone-empty p {
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .thumbs {
@@ -147,7 +166,7 @@ button {
 .thumb {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   border: none;
   padding: 0;
@@ -163,7 +182,7 @@ button {
   position: absolute;
   top: 6px;
   left: 6px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--accent);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -172,6 +191,7 @@ button {
   border-radius: 50%;
   display: grid;
   place-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 .thumb-remove {
   position: absolute;
@@ -181,7 +201,7 @@ button {
   height: 22px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(22, 32, 44, 0.7);
   color: #fff;
   font-size: 16px;
   line-height: 1;
@@ -204,7 +224,7 @@ button {
 .thumb-move button {
   flex: 1;
   border: none;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(22, 32, 44, 0.6);
   color: #fff;
   font-size: 18px;
   padding: 2px 0;
@@ -213,7 +233,8 @@ button {
   display: grid;
   place-items: center;
   font-size: 28px;
-  color: var(--muted);
+  color: var(--accent);
+  background: rgba(10, 161, 221, 0.06);
   border: 1.5px dashed var(--line);
 }
 
@@ -229,31 +250,38 @@ button {
 }
 .field > span {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text);
   font-weight: 600;
 }
 .field input[type='text'],
 .field input[type='url'],
+.field input[type='password'],
 .field textarea,
 .field select {
   width: 100%;
   background: var(--bg-soft);
   border: 1px solid var(--line);
   color: var(--text);
-  border-radius: 11px;
-  padding: 12px 13px;
+  border-radius: 12px;
+  padding: 12px 14px;
   font-size: 15px;
   font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .field textarea {
   resize: vertical;
   line-height: 1.5;
+}
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #9aa7b4;
 }
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 161, 221, 0.15);
 }
 .field-row {
   display: grid;
@@ -287,7 +315,7 @@ button {
   border: none;
   color: var(--text);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 0;
 }
 .settings-body {
@@ -297,15 +325,15 @@ button {
 }
 
 .banner {
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 12px 14px;
   font-size: 14px;
   line-height: 1.5;
 }
 .banner-error {
-  background: rgba(255, 107, 107, 0.12);
-  border: 1px solid rgba(255, 107, 107, 0.4);
-  color: #ffb3b3;
+  background: rgba(229, 72, 77, 0.08);
+  border: 1px solid rgba(229, 72, 77, 0.3);
+  color: #c0282d;
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 40vh;
@@ -324,13 +352,13 @@ button {
   padding: 16px;
   font-size: 16px;
   font-weight: 700;
-  color: #1a1208;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  box-shadow: 0 10px 30px rgba(255, 138, 92, 0.35);
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 12px 28px rgba(10, 161, 221, 0.35);
 }
 .cta:disabled {
-  filter: grayscale(0.6);
-  opacity: 0.55;
+  filter: grayscale(0.4);
+  opacity: 0.5;
   box-shadow: none;
 }
 
@@ -355,7 +383,7 @@ button {
 }
 .loader-text {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
 }
 .loader-sub {
@@ -370,7 +398,7 @@ button {
 }
 @keyframes pulse {
   50% {
-    box-shadow: 0 0 60px rgba(255, 138, 92, 0.6);
+    box-shadow: 0 0 60px rgba(10, 161, 221, 0.5);
   }
 }
 
@@ -378,11 +406,11 @@ button {
 .viewer {
   position: fixed;
   inset: 0;
-  background: #000;
+  background: #0b1620;
   overflow: hidden;
   max-width: var(--maxw);
   margin: 0 auto;
-  box-shadow: 0 0 80px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 80px rgba(11, 22, 32, 0.4);
 }
 
 .progress {
@@ -400,7 +428,7 @@ button {
   flex: 1;
   height: 3px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.35);
   overflow: hidden;
 }
 .progress-seg i {
@@ -421,14 +449,15 @@ button {
   top: max(18px, env(safe-area-inset-top));
   right: 14px;
   z-index: 30;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.85);
+  color: #16202c;
   font-size: 22px;
   line-height: 1;
+  box-shadow: var(--shadow-soft);
 }
 
 .viewer-debug {
@@ -436,25 +465,26 @@ button {
   top: max(18px, env(safe-area-inset-top));
   left: 14px;
   z-index: 30;
-  height: 34px;
+  height: 36px;
   padding: 0 12px;
-  border-radius: 17px;
+  border-radius: 18px;
   border: none;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.85);
+  color: #16202c;
   font-size: 13px;
   font-family: ui-monospace, monospace;
+  box-shadow: var(--shadow-soft);
 }
 .debug {
   position: absolute;
   inset: 0;
   z-index: 40;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(11, 22, 32, 0.92);
   padding: 60px 14px 20px;
   overflow: auto;
 }
 .debug pre {
-  color: #9af59a;
+  color: #7fe0c4;
   font-size: 11px;
   line-height: 1.45;
   white-space: pre-wrap;
@@ -477,10 +507,10 @@ button {
   padding: 40px 20px;
 }
 .fatal h2 {
-  color: #ffb3b3;
+  color: var(--danger);
 }
 .fatal pre {
-  background: var(--card);
+  background: var(--bg-soft);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 14px;
@@ -488,7 +518,7 @@ button {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #e7e4dc;
+  color: var(--text);
   overflow: auto;
 }
 .cta-inline {
@@ -497,8 +527,8 @@ button {
   border-radius: 12px;
   padding: 12px 22px;
   font-weight: 700;
-  color: #1a1208;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
 .tapzone {
@@ -522,16 +552,17 @@ button {
   top: 50%;
   transform: translateY(-50%);
   z-index: 25;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.3);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.85);
+  color: #16202c;
   font-size: 26px;
   line-height: 1;
   display: grid;
   place-items: center;
+  box-shadow: var(--shadow-soft);
 }
 .nav-prev {
   left: 10px;
@@ -566,11 +597,11 @@ button {
   object-fit: cover;
   object-position: center;
   transform: scale(1.15);
-  filter: blur(28px) brightness(0.5);
+  filter: blur(28px) brightness(0.55);
   z-index: 1;
 }
 .slide-img-missing {
-  background: linear-gradient(135deg, #2a2a3a, #14141c);
+  background: linear-gradient(135deg, #dbe6ef, #eef4f9);
 }
 .scrim {
   position: absolute;
@@ -578,8 +609,8 @@ button {
   z-index: 3; /* above both image layers, below the caption (z-index 10) */
   background: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.82) 0%,
-    rgba(0, 0, 0, 0.45) 32%,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.4) 32%,
     rgba(0, 0, 0, 0) 58%
   );
 }
@@ -597,13 +628,14 @@ button {
   font-weight: 800;
   letter-spacing: -0.01em;
   margin: 0 0 8px;
+  color: #fff;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
 }
 .narrative {
   font-size: 16px;
   line-height: 1.55;
   margin: 0;
-  color: #eceae3;
+  color: #eef2f6;
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7);
 }
 .style-chip {
@@ -613,26 +645,26 @@ button {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #fff;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 5px 10px;
   border-radius: 20px;
 }
 
-/* text slides (opening / closing) */
+/* text slides (opening / closing) — light, Capsyl-style covers */
 .slide-text {
   display: grid;
   place-items: center;
   padding: 40px 30px;
 }
 .slide-opening {
-  background: radial-gradient(120% 90% at 50% 20%, #3a2a52 0%, #16121f 60%, #0a0810 100%);
+  background: radial-gradient(120% 90% at 50% 18%, #eaf6fc 0%, #f3f9fc 55%, #ffffff 100%);
 }
 .slide-closing {
-  background: radial-gradient(120% 90% at 50% 80%, #4a3320 0%, #1a130c 60%, #0a0708 100%);
+  background: radial-gradient(120% 90% at 50% 82%, #e6faf5 0%, #f1fbf8 55%, #ffffff 100%);
 }
 .slide-text-inner {
-  max-width: 30ch;
+  max-width: 32ch;
   text-align: center;
 }
 .kicker {
@@ -640,20 +672,22 @@ button {
   font-size: 12px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent-2);
+  color: var(--accent);
+  font-weight: 700;
   margin-bottom: 18px;
 }
 .cover-title {
-  font-size: 38px;
+  font-size: 40px;
   line-height: 1.08;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   margin: 0 0 18px;
   font-weight: 800;
+  color: var(--text);
 }
 .cover-body {
   font-size: 18px;
   line-height: 1.6;
-  color: #e7e4dc;
+  color: #46586a;
   margin: 0;
 }
 .cover-body.large {
@@ -662,7 +696,7 @@ button {
 .closing-title {
   margin: 22px 0 0;
   font-size: 20px;
-  color: var(--accent-2);
+  color: var(--accent);
   font-weight: 700;
 }
 .swipe-hint {
@@ -690,8 +724,9 @@ button {
   padding: 13px 26px;
   font-weight: 700;
   font-size: 15px;
-  color: #1a1208;
-  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 10px 24px rgba(10, 161, 221, 0.35);
 }
 
 /* entrance animations */
@@ -729,7 +764,7 @@ button {
     /* Center a fixed-width column. Without an explicit width the viewer would
        collapse to zero: all its children are position:absolute, so there's no
        in-flow content to give it width once left/right aren't both 0, leaving
-       only the black body background (the "black screen"). */
+       only the body background. */
     left: 50%;
     right: auto;
     width: min(var(--maxw), calc(100% - 40px));
