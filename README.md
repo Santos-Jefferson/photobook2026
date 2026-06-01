@@ -73,6 +73,42 @@ and expects a response shaped like:
 
 > **CORS:** the browser calls your API directly, so it must send permissive CORS headers (or be served from the same origin). If it can't, put a small proxy in front of it.
 
+## ▲ Deploy to Vercel
+
+The repo is zero-config for Vercel (Vite is auto-detected; `vercel.json` pins
+the build just in case). Two ways:
+
+**A. Connect the Git repo (recommended for the team)**
+
+1. In Vercel → **Add New… → Project** → import `santos-jefferson/photobook2026`.
+2. Framework: **Vite** · Build: `npm run build` · Output: `dist` (auto-filled).
+3. Every push to the **production branch** publishes the main URL; every other
+   branch / PR gets its own shareable **Preview URL** — great for team review.
+
+**B. Vercel CLI (one-off)**
+
+```bash
+npm i -g vercel
+vercel          # first run links the project + gives a preview URL
+vercel --prod   # promote to the production URL
+```
+
+### Environment variables (Vercel → Project → Settings → Environment Variables)
+
+```
+VITE_PHOTOBOOK_API_URL=https://your-server.example.com/api/photobook
+VITE_PHOTOBOOK_API_KEY=your-key
+```
+
+> ⚠️ **`VITE_`-prefixed vars are bundled into the public client JS** — anyone can
+> read them in the browser. Don't ship a real secret this way; use a throwaway
+> key or a backend proxy for anything sensitive.
+>
+> ⚠️ **Internal API reachability:** if your API host is on a private/corporate
+> network, a teammate opening the public Vercel URL **won't be able to reach it**
+> (their browser calls the API directly). For those reviewers, use **Demo mode**
+> or send them a **Share → Download HTML** export, which is fully self-contained.
+
 ## 🗂 Structure
 
 ```
