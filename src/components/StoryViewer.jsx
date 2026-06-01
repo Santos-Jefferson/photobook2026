@@ -133,12 +133,19 @@ function PhotoSlide({ slide, revealed }) {
   return (
     <div className={`slide slide-photo ${revealed ? 'in' : ''}`}>
       {hasImage ? (
-        <img
-          className="slide-img"
-          src={slide.image}
-          alt={slide.caption || `Page ${slide.page}`}
-          onError={() => setImgError(true)}
-        />
+        <>
+          {/* Blurred fill of the same photo so a landscape shot in a portrait
+              frame (or vice-versa) gets a soft backdrop instead of black bars,
+              while the foreground shows the whole photo at its true aspect
+              ratio — nothing cropped, orientation preserved. */}
+          <img className="slide-img-bg" src={slide.image} alt="" aria-hidden="true" />
+          <img
+            className="slide-img"
+            src={slide.image}
+            alt={slide.caption || `Page ${slide.page}`}
+            onError={() => setImgError(true)}
+          />
+        </>
       ) : (
         <div className="slide-img slide-img-missing">
           {slide.image ? <span className="img-warn">Image failed to load</span> : null}

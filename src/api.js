@@ -36,6 +36,40 @@ export function fileToBase64(file) {
   })
 }
 
+// Phone photos are often stored as landscape pixels plus an EXIF orientation
+// flag that tells viewers to rotate them. Sending the raw bytes makes the
+// server process the un-rotated pixels, so a portrait shot comes back
+// landscape. This bakes the EXIF rotation into the actual pixels (and lightly
+// caps the size) so the server — and the final story — keep the orientation
+// the user actually sees. Returns raw base64 (no data: prefix).
+export async function fileToOrientedBase64(file, maxDim = 2048) {
+  try {
+    // `imageOrientation: 'from-image'` applies the EXIF rotation to the bitmap.
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+    let { width, height } = bitmap
+    if (!width || !height) throw new Error('empty bitmap')
+
+    const scale = Math.min(1, maxDim / Math.max(width, height))
+    width = Math.max(1, Math.round(width * scale))
+    height = Math.max(1, Math.round(height * scale))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close?.()
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+    const comma = dataUrl.indexOf(',')
+    return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl
+  } catch (err) {
+    // Older browsers / odd formats: fall back to the raw bytes.
+    console.warn('[Photobook] orientation normalize failed, sending raw bytes:', err)
+    return fileToBase64(file)
+  }
+}
+
 // Build the request body in the exact shape the server expects.
 export function buildPayload({ photosBase64, vibe, stylizeImages, styleStrength, style, title, context }) {
   return {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { VIBES, STYLES, MAX_PHOTOS, DEFAULT_API_URL } from '../config'
-import { fileToBase64, getApiUrl, setApiUrl, getApiKey, setApiKey } from '../api'
+import { fileToOrientedBase64, getApiUrl, setApiUrl, getApiKey, setApiKey } from '../api'
 
 let uid = 0
 
@@ -62,7 +62,7 @@ export default function Creator({ onGenerate, error, buildPayload }) {
     try {
       setApiUrl(demo ? '' : apiUrl)
       setApiKey(apiKey)
-      const photosBase64 = await Promise.all(photos.map((p) => fileToBase64(p.file)))
+      const photosBase64 = await Promise.all(photos.map((p) => fileToOrientedBase64(p.file)))
       const previewDataUrls = await Promise.all(photos.map((p) => fileToDataUrl(p.file)))
       const payload = buildPayload({
         photosBase64,
