@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
+import { downloadStoryHtml } from '../share'
 
 export default function StoryViewer({ book, onExit }) {
   const slides = useMemo(() => buildSlides(book), [book])
@@ -59,6 +60,13 @@ export default function StoryViewer({ book, onExit }) {
       <button className="viewer-close" aria-label="Close" onClick={onExit}>
         ×
       </button>
+      <button
+        className="viewer-share"
+        aria-label="Download as HTML to share"
+        onClick={() => downloadStoryHtml(book)}
+      >
+        ⤓ Share
+      </button>
       <button className="viewer-debug" aria-label="Debug" onClick={() => setShowDebug((s) => !s)}>
         {'{}'}
       </button>
@@ -88,9 +96,14 @@ export default function StoryViewer({ book, onExit }) {
       )}
 
       {slide.type === 'closing' && (
-        <button className="restart" onClick={onExit}>
-          Make another
-        </button>
+        <div className="closing-actions">
+          <button className="restart restart-share" onClick={() => downloadStoryHtml(book)}>
+            ⤓ Download to share
+          </button>
+          <button className="restart restart-ghost" onClick={onExit}>
+            Make another
+          </button>
+        </div>
       )}
     </div>
   )
