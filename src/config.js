@@ -23,16 +23,26 @@ export const VIBES = [
   'epic',
 ]
 
-// Image styles your API supports. Edit to match your model's catalog.
+// Image styles the API supports — must match the server's catalog exactly or
+// it returns a 400 ("Invalid style ...").
 export const STYLES = [
-  'Retro_Toons',
-  'Watercolor',
-  'Comic_Book',
+  '3D_Cartoon',
   'Anime',
+  'Art',
+  'Cartoon_Illustration',
+  'Color_Pop_People_Gray_Background',
+  'Colorize_Photo',
+  'Comic_Book',
+  'Enhance_Photo',
+  'Ocean',
   'Oil_Painting',
-  'Storybook',
-  'Pixel_Art',
-  'Polaroid',
+  'Pencil_Sketch',
+  'Repair_Photo',
+  'Retro_Toons',
+  'Sketch',
+  'Starry_Night',
+  'Watercolor_Sketch',
+  'Whimsy_Anime',
 ]
 
 export const MAX_PHOTOS = 12

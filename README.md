@@ -7,7 +7,7 @@ Pick photos → set the mood (vibe, art style, context) → the app sends them t
 ## ✨ Features
 
 - **Photo picker** — choose, reorder (drag or arrows), and remove up to 12 photos.
-- **Story controls** — title, free-text context, vibe, art style, "stylize" toggle and style-strength slider.
+- **Story controls** — title, free-text context, vibe, art style, and a "stylize" toggle.
 - **Stories-style viewer** — full-bleed styled images with an Instagram-style overlay (caption + narrative on a gradient scrim), a segmented progress bar, tap zones, swipe gestures, arrow buttons, and keyboard nav.
 - **Opening & closing pages** rendered from the API's `title` / `opening` / `closing`.
 - **Ken Burns** subtle zoom + text entrance animations.
@@ -39,7 +39,6 @@ The app `POST`s JSON in this shape:
   "photos": [{ "photo": "<base64 image>" }, ...],
   "vibe": "heartwarming",
   "stylize_images": true,
-  "style_strength": 0.7,
   "style": "Retro_Toons",
   "title": "Our trip to Bonneville Salt Flats",
   "context": "During Memorial Day we went to the Bonneville Salt Flats as a family."

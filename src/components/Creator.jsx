@@ -11,7 +11,6 @@ export default function Creator({ onGenerate, error, buildPayload }) {
   const [vibe, setVibe] = useState(VIBES[0])
   const [style, setStyle] = useState(STYLES[0])
   const [stylize, setStylize] = useState(true)
-  const [strength, setStrength] = useState(0.7)
   const [busy, setBusy] = useState(false)
 
   const [apiUrl, setUrl] = useState(getApiUrl())
@@ -68,7 +67,6 @@ export default function Creator({ onGenerate, error, buildPayload }) {
         photosBase64,
         vibe,
         stylizeImages: stylize,
-        styleStrength: Number(strength),
         style,
         title: title.trim(),
         context: context.trim(),
@@ -222,22 +220,6 @@ export default function Creator({ onGenerate, error, buildPayload }) {
           <input type="checkbox" checked={stylize} onChange={(e) => setStylize(e.target.checked)} />
           <span>Stylize my photos</span>
         </label>
-
-        {stylize && (
-          <label className="field">
-            <span>
-              Style strength <strong>{Number(strength).toFixed(2)}</strong>
-            </span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={strength}
-              onChange={(e) => setStrength(e.target.value)}
-            />
-          </label>
-        )}
       </section>
 
       {/* API settings */}

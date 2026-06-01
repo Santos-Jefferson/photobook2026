@@ -71,12 +71,11 @@ export async function fileToOrientedBase64(file, maxDim = 2048) {
 }
 
 // Build the request body in the exact shape the server expects.
-export function buildPayload({ photosBase64, vibe, stylizeImages, styleStrength, style, title, context }) {
+export function buildPayload({ photosBase64, vibe, stylizeImages, style, title, context }) {
   return {
     photos: photosBase64.map((photo) => ({ photo })),
     vibe,
     stylize_images: stylizeImages,
-    style_strength: styleStrength,
     style,
     title,
     context,
