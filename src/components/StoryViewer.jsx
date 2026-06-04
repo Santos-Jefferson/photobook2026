@@ -135,7 +135,7 @@ export default function StoryViewer({ book, onExit }) {
             onClick={narration.toggle}
             aria-label={narration.narrating ? 'Pause narration' : 'Play narration'}
           >
-            <span className="narrate-ico">{narration.narrating ? '⏸' : '▶'}</span>
+            <span className="narrate-ico">{narration.loading ? '…' : narration.narrating ? '⏸' : '▶'}</span>
             {narration.narrating ? 'Narrating' : 'Narrate'}
           </button>
           <select
@@ -147,7 +147,7 @@ export default function StoryViewer({ book, onExit }) {
             {NARRATION_LANGS.map((l) => (
               <option key={l.code} value={l.code}>
                 {l.label}
-                {narration.hasVoiceForLang(l.code) ? '' : ' (no voice)'}
+                {narration.fallback && !narration.hasVoiceForLang(l.code) ? ' (no voice)' : ''}
               </option>
             ))}
           </select>

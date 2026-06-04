@@ -13,7 +13,7 @@ Pick photos → set the mood (vibe, art style, context) → the app sends them t
 - **Ken Burns** subtle zoom + text entrance animations.
 - **Photo metadata → context** — reads EXIF (date/time + GPS) from the uploaded photos and offers to fold a line like "Photos taken on the evening of May 24, 2026 in Lisbon, Portugal" into the context (GPS is reverse-geocoded best-effort via OpenStreetMap).
 - **Edit photos by chat** — on any photo slide, open **✦ Edit** to talk to the photo-chat API: "make it watercolor", "remove the background", "write a heartwarming caption". Style/edit results swap the photo in place; text answers can be applied as the caption or narrative. Powered by `/photo-chat/analyze` (type + scene-aware suggestions) and `/photo-chat/message` (auto-routed style/edit/text).
-- **Voice narration** — reads the whole story aloud (opening → each frame → closing) with the browser's Web Speech API. Language switch for **English / Portuguese / Spanish**.
+- **Voice narration** — reads the whole story aloud (opening → each frame → closing) in a **natural human voice** (ElevenLabs, via the `/api/narrate` serverless function), with automatic translation per language. Language switch for **English / Portuguese / Spanish**. Falls back to the browser's built-in voice when no backend/key is configured.
 - **Share → standalone HTML** — export a finished story as one self-contained `.html` (images inlined) that anyone can open in a browser. No server, no build.
 - **Demo mode** — explore the whole experience with no server, using your own photos and locally-written narration.
 
@@ -101,7 +101,15 @@ vercel --prod   # promote to the production URL
 ```
 VITE_PHOTOBOOK_API_URL=https://your-server.example.com/api/photobook
 VITE_PHOTOBOOK_API_KEY=your-key
+
+# Natural-voice narration (server-side; keep secret — no VITE_ prefix):
+ELEVENLABS_API_KEY=your-elevenlabs-key
+# optional: ELEVENLABS_VOICE_ID / ELEVENLABS_VOICE_ID_EN / _PT / _ES
 ```
+
+The natural voice runs through the `api/narrate` serverless function (auto-detected
+by Vercel), which translates the text per language and calls ElevenLabs. Without
+`ELEVENLABS_API_KEY`, narration gracefully falls back to the browser voice.
 
 > ⚠️ **`VITE_`-prefixed vars are bundled into the public client JS** — anyone can
 > read them in the browser. Don't ship a real secret this way; use a throwaway
