@@ -508,7 +508,21 @@ button {
   left: 14px;
   z-index: 30;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+  max-width: calc(100% - 120px);
+}
+.narrate-note {
+  flex-basis: 100%;
+  max-width: 280px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #16202c;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 10px;
+  padding: 6px 9px;
+  box-shadow: var(--shadow-soft);
 }
 .narrate-btn {
   display: inline-flex;

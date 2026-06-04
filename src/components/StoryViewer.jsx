@@ -151,6 +151,7 @@ export default function StoryViewer({ book, onExit }) {
               </option>
             ))}
           </select>
+          {narration.note && <span className="narrate-note">{narration.note}</span>}
         </div>
       )}
 

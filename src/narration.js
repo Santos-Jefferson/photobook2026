@@ -32,7 +32,13 @@ export function useNarration({ slides, index, setIndex }) {
   const [lang, setLang] = useState('en')
   const [loading, setLoading] = useState(false)
   const [fallback, setFallback] = useState(false) // true once we switch to browser voice
+  const [note, setNote] = useState('') // why we fell back (shown in the UI)
   const [voices, setVoices] = useState([])
+
+  // A tiny silent clip we play within the click gesture to unlock audio
+  // autoplay (some browsers, esp. Safari, block a later async .play()).
+  const SILENT =
+    'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
 
   const audioRef = useRef(null)
   const cacheRef = useRef(new Map()) // key -> object URL
@@ -93,7 +99,11 @@ export function useNarration({ slides, index, setIndex }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, lang: code }),
     })
-    if (!res.ok) throw new Error('narrate ' + res.status)
+    if (!res.ok) {
+      const e = new Error('narrate ' + res.status)
+      e.status = res.status
+      throw e
+    }
     const blob = await res.blob()
     if (!blob.type || !blob.type.startsWith('audio')) throw new Error('not audio')
     const url = URL.createObjectURL(blob)
@@ -147,12 +157,18 @@ export function useNarration({ slides, index, setIndex }) {
           const a = audioRef.current
           a.onended = advance
           a.src = url
+          setNote('')
           return a.play()
         })
-        .catch(() => {
+        .catch((err) => {
           // Backend missing or blocked: switch to the browser voice for good.
           if (tokenRef.current !== myToken) return
           setFallback(true)
+          setNote(
+            err && err.status === 501
+              ? 'Human voice not configured — using device voice. Run `npm run share` with ELEVENLABS_API_KEY.'
+              : 'Human voice unavailable — using device voice. (Are you running `npm run share`, not `npm run dev`?)',
+          )
           speakBrowser()
         })
         .finally(() => {
@@ -182,7 +198,22 @@ export function useNarration({ slides, index, setIndex }) {
     [synth],
   )
 
-  const toggle = useCallback(() => setNarrating((n) => !n), [])
+  const toggle = useCallback(() => {
+    setNarrating((n) => {
+      const next = !n
+      // Unlock audio within the user gesture so the later async play() works.
+      if (next && audioRef.current) {
+        try {
+          audioRef.current.src = SILENT
+          const p = audioRef.current.play()
+          if (p && p.then) p.then(() => audioRef.current && audioRef.current.pause()).catch(() => {})
+        } catch {
+          /* ignore */
+        }
+      }
+      return next
+    })
+  }, [SILENT])
 
-  return { supported, narrating, loading, fallback, toggle, lang, setLang, hasVoiceForLang }
+  return { supported, narrating, loading, fallback, note, toggle, lang, setLang, hasVoiceForLang }
 }
