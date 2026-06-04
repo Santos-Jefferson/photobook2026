@@ -12,6 +12,7 @@ Pick photos → set the mood (vibe, art style, context) → the app sends them t
 - **Opening & closing pages** rendered from the API's `title` / `opening` / `closing`.
 - **Ken Burns** subtle zoom + text entrance animations.
 - **Photo metadata → context** — reads EXIF (date/time + GPS) from the uploaded photos and offers to fold a line like "Photos taken on the evening of May 24, 2026 in Lisbon, Portugal" into the context (GPS is reverse-geocoded best-effort via OpenStreetMap).
+- **Edit photos by chat** — on any photo slide, open **✦ Edit** to talk to the photo-chat API: "make it watercolor", "remove the background", "write a heartwarming caption". Style/edit results swap the photo in place; text answers can be applied as the caption or narrative. Powered by `/photo-chat/analyze` (type + scene-aware suggestions) and `/photo-chat/message` (auto-routed style/edit/text).
 - **Voice narration** — reads the whole story aloud (opening → each frame → closing) with the browser's Web Speech API. Language switch for **English / Portuguese / Spanish**.
 - **Share → standalone HTML** — export a finished story as one self-contained `.html` (images inlined) that anyone can open in a browser. No server, no build.
 - **Demo mode** — explore the whole experience with no server, using your own photos and locally-written narration.
@@ -132,5 +133,7 @@ src/
   returns audio — the narration UI is already structured to swap the audio
   source. Note: the voice reads the story's existing text; truly multilingual
   narration also needs the story *text* generated/translated per language.
-- This is an MVP. Natural next steps: edit a story via the `/chat` endpoint,
-  premium narration voices, and a backend proxy for private API keys.
+- Photo-chat edits are kept in the viewer's local copy of the story and flow
+  into the narration and the HTML export. They are not persisted server-side.
+- This is an MVP. Natural next steps: premium narration voices, persistence,
+  and a backend proxy for private API keys.

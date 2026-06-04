@@ -2,18 +2,57 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
 import { downloadStoryHtml } from '../share'
 import { useNarration, NARRATION_LANGS } from '../narration'
+import PhotoChat from './PhotoChat'
 
 export default function StoryViewer({ book, onExit }) {
-  const slides = useMemo(() => buildSlides(book), [book])
+  // Local, editable copy so photo-chat edits update the story live (and flow
+  // into narration + the HTML export).
+  const [liveBook, setLiveBook] = useState(book)
   const [index, setIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   const touch = useRef({ x: 0, y: 0, t: 0 })
+
+  // A new generated book resets the viewer.
+  useEffect(() => {
+    setLiveBook(book)
+    setIndex(0)
+  }, [book])
+
+  const slides = useMemo(() => buildSlides(liveBook), [liveBook])
 
   const total = slides.length
   const slide = slides[index]
+  const pageIndex = slide && slide.type === 'photo' ? index - 1 : -1
 
   const narration = useNarration({ slides, index, setIndex })
+
+  // Close the editor when leaving a photo slide.
+  useEffect(() => {
+    if (!slide || slide.type !== 'photo') setChatOpen(false)
+  }, [index, slide])
+
+  function updatePage(pi, patch) {
+    setLiveBook((prev) => {
+      const pages = Array.isArray(prev.pages) ? prev.pages.slice() : []
+      if (pi < 0 || pi >= pages.length) return prev
+      pages[pi] = { ...pages[pi], ...patch }
+      return { ...prev, pages }
+    })
+  }
+
+  function applyImage(b64, styleApplied) {
+    updatePage(pageIndex, {
+      styled_image_b64: b64,
+      ...(styleApplied ? { style_applied: styleApplied } : {}),
+    })
+  }
+
+  function applyText(field, text) {
+    if (field === 'caption') updatePage(pageIndex, { caption: text })
+    else updatePage(pageIndex, { narrative_beat: text })
+  }
 
   const go = (next) => {
     setIndex((i) => Math.min(Math.max(i + next, 0), total - 1))
@@ -66,7 +105,7 @@ export default function StoryViewer({ book, onExit }) {
       <button
         className="viewer-share"
         aria-label="Download as HTML to share"
-        onClick={() => downloadStoryHtml(book)}
+        onClick={() => downloadStoryHtml(liveBook)}
       >
         ⤓ Share
       </button>
@@ -103,7 +142,7 @@ export default function StoryViewer({ book, onExit }) {
 
       {showDebug && (
         <div className="debug" onClick={() => setShowDebug(false)}>
-          <pre onClick={(e) => e.stopPropagation()}>{JSON.stringify(book, null, 2)}</pre>
+          <pre onClick={(e) => e.stopPropagation()}>{JSON.stringify(liveBook, null, 2)}</pre>
         </div>
       )}
 
@@ -123,6 +162,24 @@ export default function StoryViewer({ book, onExit }) {
         <button className="nav nav-next" onClick={() => go(1)} aria-label="Next">
           ›
         </button>
+      )}
+
+      {slide.type === 'photo' && !chatOpen && (
+        <button className="edit-fab" onClick={() => setChatOpen(true)} aria-label="Edit this photo">
+          ✦ Edit
+        </button>
+      )}
+
+      {slide.type === 'photo' && chatOpen && pageIndex >= 0 && (
+        <div className="chat-overlay" onClick={() => setChatOpen(false)}>
+          <PhotoChat
+            key={pageIndex}
+            photo={slide.image}
+            onApplyImage={applyImage}
+            onApplyText={applyText}
+            onClose={() => setChatOpen(false)}
+          />
+        </div>
       )}
 
       {slide.type === 'closing' && (
