@@ -133,13 +133,8 @@ const server = http.createServer(async (req, res) => {
 })
 
 server.listen(PORT, () => {
-  const hasKey = !!process.env.ELEVENLABS_API_KEY
   console.log(`\n  Photobook running at  http://localhost:${PORT}`)
-  console.log(
-    `  Narration voice:      ${
-      hasKey ? 'ElevenLabs (configured ✓)' : 'browser fallback (set ELEVENLABS_API_KEY in .env.local)'
-    }`,
-  )
+  console.log(`  Narration voice:      Microsoft Edge neural voices (free, no key)`)
   console.log(`  Outbound proxy:       ${PROXY || 'none (direct)'}`)
   console.log(`\n  Share it publicly:    cloudflared tunnel --url http://localhost:${PORT}\n`)
 })

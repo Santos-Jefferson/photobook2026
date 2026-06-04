@@ -13,7 +13,7 @@ Pick photos → set the mood (vibe, art style, context) → the app sends them t
 - **Ken Burns** subtle zoom + text entrance animations.
 - **Photo metadata → context** — reads EXIF (date/time + GPS) from the uploaded photos and offers to fold a line like "Photos taken on the evening of May 24, 2026 in Lisbon, Portugal" into the context (GPS is reverse-geocoded best-effort via OpenStreetMap).
 - **Edit photos by chat** — on any photo slide, open **✦ Edit** to talk to the photo-chat API: "make it watercolor", "remove the background", "write a heartwarming caption". Style/edit results swap the photo in place; text answers can be applied as the caption or narrative. Powered by `/photo-chat/analyze` (type + scene-aware suggestions) and `/photo-chat/message` (auto-routed style/edit/text).
-- **Voice narration** — reads the whole story aloud (opening → each frame → closing) in a **natural human voice** (ElevenLabs, via the `/api/narrate` serverless function), with automatic translation per language. Language switch for **English / Portuguese / Spanish**. Falls back to the browser's built-in voice when no backend/key is configured.
+- **Voice narration** — reads the whole story aloud (opening → each frame → closing) in **natural neural voices** (Microsoft Edge "Read Aloud", free, no API key) via the `/api/narrate` server, with automatic translation per language. Language switch for **English / Portuguese / Spanish**. Falls back to the browser's built-in voice when the server isn't running (e.g. the static export).
 - **Share → standalone HTML** — export a finished story as one self-contained `.html` (images inlined) that anyone can open in a browser. No server, no build.
 - **Demo mode** — explore the whole experience with no server, using your own photos and locally-written narration.
 
@@ -78,19 +78,15 @@ and expects a response shaped like:
 
 ## 🌐 Run locally + share a public URL (no Vercel needed)
 
-Runs the whole app **and** the narration voice on your machine, then exposes a
-public link you can send to the team. Your ElevenLabs key never leaves your
-computer.
+Runs the whole app **and** the natural-voice narration on your machine (no API
+keys, no Vercel), then exposes a public link you can send to the team.
 
 ```bash
-# 1) put your key in .env.local (git-ignored)
-echo 'ELEVENLABS_API_KEY=your-elevenlabs-key' > .env.local
-
-# 2) build + serve everything on one local port
+# 1) build + serve everything on one local port
 npm install
 npm run share          # builds, then serves http://localhost:5050
 
-# 3) in a second terminal, open a free public tunnel (no signup):
+# 2) in a second terminal, open a free public tunnel (no signup):
 cloudflared tunnel --url http://localhost:5050
 #   → prints a https://<random>.trycloudflare.com URL to share
 ```
@@ -103,10 +99,12 @@ npx localtunnel --port 5050
 ```
 
 Notes:
+- Narration uses free Microsoft Edge neural voices — nothing to configure.
 - `npm run serve` just serves the existing `dist/` (run `npm run build` first);
   `npm run share` does both. Rebuild after code changes.
-- Without `ELEVENLABS_API_KEY`, narration falls back to the browser voice.
 - The tunnel points at your machine, so keep the terminal open while sharing.
+- Behind a corporate proxy? Set `HTTPS_PROXY` in `.env.local` so the server's
+  outbound calls go through it.
 
 ## ▲ Deploy to Vercel
 
@@ -134,14 +132,14 @@ vercel --prod   # promote to the production URL
 VITE_PHOTOBOOK_API_URL=https://your-server.example.com/api/photobook
 VITE_PHOTOBOOK_API_KEY=your-key
 
-# Natural-voice narration (server-side; keep secret — no VITE_ prefix):
-ELEVENLABS_API_KEY=your-elevenlabs-key
-# optional: ELEVENLABS_VOICE_ID / ELEVENLABS_VOICE_ID_EN / _PT / _ES
+# Optional narration voice overrides (defaults are fine):
+# EDGE_VOICE_EN=en-US-AriaNeural
+# EDGE_VOICE_PT=pt-BR-FranciscaNeural
+# EDGE_VOICE_ES=es-ES-ElviraNeural
 ```
 
-The natural voice runs through the `api/narrate` serverless function (auto-detected
-by Vercel), which translates the text per language and calls ElevenLabs. Without
-`ELEVENLABS_API_KEY`, narration gracefully falls back to the browser voice.
+Narration runs through the `api/narrate` function, which translates the text per
+language and synthesizes free Microsoft Edge neural voices — no API key needed.
 
 > ⚠️ **`VITE_`-prefixed vars are bundled into the public client JS** — anyone can
 > read them in the browser. Don't ship a real secret this way; use a throwaway
@@ -167,12 +165,12 @@ src/
 
 ## ⚠️ Notes
 
-- **Narration voice quality** uses the device's built-in TTS voices, which vary
-  by OS/browser and aren't fully "human". For premium natural voices (e.g.
-  ElevenLabs / OpenAI TTS) we'd add a small backend that holds the API key and
-  returns audio — the narration UI is already structured to swap the audio
-  source. Note: the voice reads the story's existing text; truly multilingual
-  narration also needs the story *text* generated/translated per language.
+- **Narration voice** uses free Microsoft Edge neural voices through the local
+  `/api/narrate` server (with per-language translation). When that server isn't
+  running (e.g. opening the static HTML export), it falls back to the device's
+  built-in voice. Edge voices use an unofficial endpoint — fine for an MVP; swap
+  in a paid TTS later if you need a guaranteed SLA. The narration UI is already
+  structured to swap the audio source.
 - Photo-chat edits are kept in the viewer's local copy of the story and flow
   into the narration and the HTML export. They are not persisted server-side.
 - This is an MVP. Natural next steps: premium narration voices, persistence,

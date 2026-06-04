@@ -164,11 +164,7 @@ export function useNarration({ slides, index, setIndex }) {
           // Backend missing or blocked: switch to the browser voice for good.
           if (tokenRef.current !== myToken) return
           setFallback(true)
-          setNote(
-            err && err.status === 501
-              ? 'Human voice not configured — using device voice. Run `npm run share` with ELEVENLABS_API_KEY.'
-              : 'Human voice unavailable — using device voice. (Are you running `npm run share`, not `npm run dev`?)',
-          )
+          setNote('Neural voice unavailable — using device voice. (Run `npm run share`, not `npm run dev`.)')
           speakBrowser()
         })
         .finally(() => {
