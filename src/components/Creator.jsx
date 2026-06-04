@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { VIBES, STYLES, MAX_PHOTOS, DEFAULT_API_URL } from '../config'
 import { fileToOrientedBase64, getApiUrl, setApiUrl, getApiKey, setApiKey } from '../api'
+import { readPhotoMeta, summarizePhotoMeta } from '../metadata'
 
 let uid = 0
 
@@ -13,6 +14,10 @@ export default function Creator({ onGenerate, error, buildPayload }) {
   const [stylize, setStylize] = useState(true)
   const [busy, setBusy] = useState(false)
 
+  // EXIF-derived context (date/time/place) extracted from the uploaded photos.
+  const [photoMeta, setPhotoMeta] = useState({ summary: '', place: '', hasData: false })
+  const [includeMeta, setIncludeMeta] = useState(true)
+
   const [apiUrl, setUrl] = useState(getApiUrl())
   const [apiKey, setKey] = useState(getApiKey())
   const [demo, setDemo] = useState(!getApiUrl())
@@ -23,6 +28,26 @@ export default function Creator({ onGenerate, error, buildPayload }) {
 
   // Revoke object URLs on unmount to avoid leaks.
   useEffect(() => () => photos.forEach((p) => URL.revokeObjectURL(p.url)), []) // eslint-disable-line
+
+  // Extract EXIF (date/time/GPS) whenever the photo set changes, and build a
+  // context line from it. Reverse-geocoding is async, so this runs in an effect
+  // with cancellation to avoid setting state after a newer change.
+  useEffect(() => {
+    let cancelled = false
+    if (!photos.length) {
+      setPhotoMeta({ summary: '', place: '', hasData: false })
+      return
+    }
+    ;(async () => {
+      const metas = await Promise.all(photos.map((p) => readPhotoMeta(p.file)))
+      if (cancelled) return
+      const summary = await summarizePhotoMeta(metas)
+      if (!cancelled) setPhotoMeta(summary)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [photos])
 
   function addFiles(fileList) {
     const incoming = Array.from(fileList).filter((f) => f.type.startsWith('image/'))
@@ -63,13 +88,21 @@ export default function Creator({ onGenerate, error, buildPayload }) {
       setApiKey(apiKey)
       const photosBase64 = await Promise.all(photos.map((p) => fileToOrientedBase64(p.file)))
       const previewDataUrls = await Promise.all(photos.map((p) => fileToDataUrl(p.file)))
+
+      // Fold the EXIF-derived details into the context when enabled.
+      const baseContext = context.trim()
+      const fullContext =
+        includeMeta && photoMeta.summary
+          ? [baseContext, photoMeta.summary].filter(Boolean).join('\n\n')
+          : baseContext
+
       const payload = buildPayload({
         photosBase64,
         vibe,
         stylizeImages: stylize,
         style,
         title: title.trim(),
-        context: context.trim(),
+        context: fullContext,
       })
       await onGenerate({ payload, previewDataUrls, demo })
     } finally {
@@ -191,6 +224,15 @@ export default function Creator({ onGenerate, error, buildPayload }) {
             onChange={(e) => setContext(e.target.value)}
           />
         </label>
+
+        {photoMeta.hasData && (
+          <label className="meta-hint">
+            <input type="checkbox" checked={includeMeta} onChange={(e) => setIncludeMeta(e.target.checked)} />
+            <span>
+              <strong>From your photos:</strong> {photoMeta.summary}
+            </span>
+          </label>
+        )}
 
         <div className="field-row">
           <label className="field">

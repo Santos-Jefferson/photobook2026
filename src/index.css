@@ -306,6 +306,31 @@ button {
   accent-color: var(--accent);
 }
 
+.meta-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: -2px 0 14px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgba(10, 161, 221, 0.06);
+  border: 1px solid rgba(10, 161, 221, 0.18);
+  font-size: 13px;
+  line-height: 1.5;
+  color: #34536a;
+  cursor: pointer;
+}
+.meta-hint input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.meta-hint strong {
+  color: var(--accent-strong);
+}
+
 .settings-toggle {
   width: 100%;
   display: flex;
@@ -462,17 +487,62 @@ button {
 
 .viewer-debug {
   position: absolute;
-  top: max(18px, env(safe-area-inset-top));
+  bottom: max(14px, env(safe-area-inset-bottom));
   left: 14px;
   z-index: 30;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 18px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 15px;
   border: none;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.7);
   color: #16202c;
-  font-size: 13px;
+  font-size: 12px;
   font-family: ui-monospace, monospace;
+  box-shadow: var(--shadow-soft);
+}
+
+/* narration controls (top-left) */
+.narrate-bar {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 14px;
+  z-index: 30;
+  display: flex;
+  gap: 6px;
+}
+.narrate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #16202c;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--shadow-soft);
+}
+.narrate-btn.on {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+.narrate-ico {
+  font-size: 11px;
+  line-height: 1;
+}
+.narrate-lang {
+  height: 36px;
+  border: none;
+  border-radius: 18px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #16202c;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
   box-shadow: var(--shadow-soft);
 }
 .debug {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
 import { downloadStoryHtml } from '../share'
+import { useNarration, NARRATION_LANGS } from '../narration'
 
 export default function StoryViewer({ book, onExit }) {
   const slides = useMemo(() => buildSlides(book), [book])
@@ -11,6 +12,8 @@ export default function StoryViewer({ book, onExit }) {
 
   const total = slides.length
   const slide = slides[index]
+
+  const narration = useNarration({ slides, index, setIndex })
 
   const go = (next) => {
     setIndex((i) => Math.min(Math.max(i + next, 0), total - 1))
@@ -70,6 +73,33 @@ export default function StoryViewer({ book, onExit }) {
       <button className="viewer-debug" aria-label="Debug" onClick={() => setShowDebug((s) => !s)}>
         {'{}'}
       </button>
+
+      {/* narration controls */}
+      {narration.supported && (
+        <div className="narrate-bar">
+          <button
+            className={`narrate-btn ${narration.narrating ? 'on' : ''}`}
+            onClick={narration.toggle}
+            aria-label={narration.narrating ? 'Pause narration' : 'Play narration'}
+          >
+            <span className="narrate-ico">{narration.narrating ? '⏸' : '▶'}</span>
+            {narration.narrating ? 'Narrating' : 'Narrate'}
+          </button>
+          <select
+            className="narrate-lang"
+            value={narration.lang}
+            onChange={(e) => narration.setLang(e.target.value)}
+            aria-label="Narration language"
+          >
+            {NARRATION_LANGS.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+                {narration.hasVoiceForLang(l.code) ? '' : ' (no voice)'}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {showDebug && (
         <div className="debug" onClick={() => setShowDebug(false)}>

@@ -11,6 +11,9 @@ Pick photos → set the mood (vibe, art style, context) → the app sends them t
 - **Stories-style viewer** — full-bleed styled images with an Instagram-style overlay (caption + narrative on a gradient scrim), a segmented progress bar, tap zones, swipe gestures, arrow buttons, and keyboard nav.
 - **Opening & closing pages** rendered from the API's `title` / `opening` / `closing`.
 - **Ken Burns** subtle zoom + text entrance animations.
+- **Photo metadata → context** — reads EXIF (date/time + GPS) from the uploaded photos and offers to fold a line like "Photos taken on the evening of May 24, 2026 in Lisbon, Portugal" into the context (GPS is reverse-geocoded best-effort via OpenStreetMap).
+- **Voice narration** — reads the whole story aloud (opening → each frame → closing) with the browser's Web Speech API. Language switch for **English / Portuguese / Spanish**.
+- **Share → standalone HTML** — export a finished story as one self-contained `.html` (images inlined) that anyone can open in a browser. No server, no build.
 - **Demo mode** — explore the whole experience with no server, using your own photos and locally-written narration.
 
 ## 🚀 Run it
@@ -123,4 +126,11 @@ src/
 
 ## ⚠️ Notes
 
-- This is an MVP — no persistence/sharing yet. Natural next steps: save/share a book via link, export to video/PDF, and a backend proxy for private API keys.
+- **Narration voice quality** uses the device's built-in TTS voices, which vary
+  by OS/browser and aren't fully "human". For premium natural voices (e.g.
+  ElevenLabs / OpenAI TTS) we'd add a small backend that holds the API key and
+  returns audio — the narration UI is already structured to swap the audio
+  source. Note: the voice reads the story's existing text; truly multilingual
+  narration also needs the story *text* generated/translated per language.
+- This is an MVP. Natural next steps: edit a story via the `/chat` endpoint,
+  premium narration voices, and a backend proxy for private API keys.
