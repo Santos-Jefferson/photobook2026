@@ -76,6 +76,38 @@ and expects a response shaped like:
 
 > **CORS:** the browser calls your API directly, so it must send permissive CORS headers (or be served from the same origin). If it can't, put a small proxy in front of it.
 
+## 🌐 Run locally + share a public URL (no Vercel needed)
+
+Runs the whole app **and** the narration voice on your machine, then exposes a
+public link you can send to the team. Your ElevenLabs key never leaves your
+computer.
+
+```bash
+# 1) put your key in .env.local (git-ignored)
+echo 'ELEVENLABS_API_KEY=your-elevenlabs-key' > .env.local
+
+# 2) build + serve everything on one local port
+npm install
+npm run share          # builds, then serves http://localhost:5050
+
+# 3) in a second terminal, open a free public tunnel (no signup):
+cloudflared tunnel --url http://localhost:5050
+#   → prints a https://<random>.trycloudflare.com URL to share
+```
+
+Don't have `cloudflared`? Either install it (`brew install cloudflared`, or
+download from Cloudflare), or use the zero-install alternative:
+
+```bash
+npx localtunnel --port 5050
+```
+
+Notes:
+- `npm run serve` just serves the existing `dist/` (run `npm run build` first);
+  `npm run share` does both. Rebuild after code changes.
+- Without `ELEVENLABS_API_KEY`, narration falls back to the browser voice.
+- The tunnel points at your machine, so keep the terminal open while sharing.
+
 ## ▲ Deploy to Vercel
 
 The repo is zero-config for Vercel (Vite is auto-detected; `vercel.json` pins
