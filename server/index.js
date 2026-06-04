@@ -12,6 +12,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { setGlobalDispatcher, ProxyAgent } from 'undici'
 import { getNarrationAudio } from '../lib/narrate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -32,6 +33,19 @@ function loadEnvLocal() {
   }
 }
 loadEnvLocal()
+
+// On a corporate network, Node's fetch (unlike the browser) won't use the
+// system proxy — outbound calls to ElevenLabs/translation fail with "fetch
+// failed". If a proxy is configured, route all fetches through it.
+const PROXY =
+  process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy
+if (PROXY) {
+  try {
+    setGlobalDispatcher(new ProxyAgent(PROXY))
+  } catch (e) {
+    console.warn('  Proxy setup failed:', e.message)
+  }
+}
 
 const DIST = path.join(__dirname, '..', 'dist')
 const PORT = process.env.PORT || 5050
@@ -126,5 +140,6 @@ server.listen(PORT, () => {
       hasKey ? 'ElevenLabs (configured ✓)' : 'browser fallback (set ELEVENLABS_API_KEY in .env.local)'
     }`,
   )
+  console.log(`  Outbound proxy:       ${PROXY || 'none (direct)'}`)
   console.log(`\n  Share it publicly:    cloudflared tunnel --url http://localhost:${PORT}\n`)
 })
