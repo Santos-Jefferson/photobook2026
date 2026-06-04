@@ -912,6 +912,21 @@ button {
   padding: 3px 8px;
   border-radius: 10px;
 }
+.chat-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-revert {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--accent-strong);
+  border-radius: 14px;
+  padding: 6px 11px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
 .chat-close {
   border: none;
   background: var(--bg-soft);

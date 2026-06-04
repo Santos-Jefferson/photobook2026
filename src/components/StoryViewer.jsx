@@ -54,6 +54,20 @@ export default function StoryViewer({ book, onExit }) {
     else updatePage(pageIndex, { narrative_beat: text })
   }
 
+  // `book` is the immutable original; compare against it to know if the current
+  // page's photo was edited, and to restore it.
+  const originalPage = pageIndex >= 0 && Array.isArray(book.pages) ? book.pages[pageIndex] : null
+  const livePage = pageIndex >= 0 && Array.isArray(liveBook.pages) ? liveBook.pages[pageIndex] : null
+  const canRevert = !!originalPage && !!livePage && originalPage.styled_image_b64 !== livePage.styled_image_b64
+
+  function revertPhoto() {
+    if (!originalPage) return
+    updatePage(pageIndex, {
+      styled_image_b64: originalPage.styled_image_b64,
+      style_applied: originalPage.style_applied,
+    })
+  }
+
   const go = (next) => {
     setIndex((i) => Math.min(Math.max(i + next, 0), total - 1))
   }
@@ -175,6 +189,8 @@ export default function StoryViewer({ book, onExit }) {
           <PhotoChat
             key={pageIndex}
             photo={slide.image}
+            canRevert={canRevert}
+            onRevert={revertPhoto}
             onApplyImage={applyImage}
             onApplyText={applyText}
             onClose={() => setChatOpen(false)}

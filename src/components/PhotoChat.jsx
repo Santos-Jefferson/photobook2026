@@ -5,7 +5,7 @@ import { STYLES } from '../config'
 // Editing panel for a single story photo. Sends natural-language messages to
 // the photo-chat API and routes the result: a new image replaces the page's
 // photo; a text response can be applied as the caption or narrative.
-export default function PhotoChat({ photo, onApplyImage, onApplyText, onClose }) {
+export default function PhotoChat({ photo, canRevert, onRevert, onApplyImage, onApplyText, onClose }) {
   const [analysis, setAnalysis] = useState(null)
   const [analyzing, setAnalyzing] = useState(true)
   const [thread, setThread] = useState([])
@@ -79,9 +79,22 @@ export default function PhotoChat({ photo, onApplyImage, onApplyText, onClose })
           <strong>Edit this photo</strong>
           {analysis && analysis.image_type && <span className="chat-type">{analysis.image_type}</span>}
         </div>
-        <button className="chat-close" aria-label="Close" onClick={onClose}>
-          ×
-        </button>
+        <div className="chat-head-actions">
+          {canRevert && (
+            <button
+              className="chat-revert"
+              onClick={() => {
+                onRevert()
+                setThread((t) => [...t, { role: 'assistant', text: '↩ Photo reverted to the original.' }])
+              }}
+            >
+              ↩ Revert
+            </button>
+          )}
+          <button className="chat-close" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="chat-body" ref={scroller}>
