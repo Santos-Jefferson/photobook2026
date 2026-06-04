@@ -23,7 +23,7 @@ export function narrationTextForSlide(slide) {
   return [slide.caption, slide.narrative].filter(Boolean).join('. ')
 }
 
-export function useNarration({ slides, index, setIndex }) {
+export function useNarration({ slides, index, setIndex, translateAudio = true }) {
   const synth = typeof window !== 'undefined' ? window.speechSynthesis : null
   const canAudio = typeof window !== 'undefined' && typeof window.Audio !== 'undefined'
   const supported = canAudio || !!synth
@@ -97,7 +97,7 @@ export function useNarration({ slides, index, setIndex }) {
     const res = await fetch(NARRATE_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang: code }),
+      body: JSON.stringify({ text, lang: code, translate: translateAudio }),
     })
     if (!res.ok) {
       const e = new Error('narrate ' + res.status)
@@ -180,7 +180,7 @@ export function useNarration({ slides, index, setIndex }) {
       }
       if (synth) synth.cancel()
     }
-  }, [narrating, index, lang, fallback, canAudio, slides, setIndex, pickVoice, synth])
+  }, [narrating, index, lang, fallback, canAudio, slides, setIndex, pickVoice, synth, translateAudio])
 
   // Clean up on unmount.
   useEffect(

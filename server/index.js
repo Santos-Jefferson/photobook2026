@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setGlobalDispatcher, ProxyAgent } from 'undici'
-import { getNarrationAudio } from '../lib/narrate.js'
+import { getNarrationAudio, translateMany } from '../lib/narrate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -111,6 +111,24 @@ const server = http.createServer(async (req, res) => {
       const status = e.code === 'NO_KEY' ? 501 : e.code === 'NO_TEXT' ? 400 : 502
       res.writeHead(status, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: e.message, detail: e.detail }))
+    }
+    return
+  }
+
+  // --- translation API (batch) ---
+  if (url.pathname === '/api/translate') {
+    if (req.method !== 'POST') {
+      res.writeHead(405).end('Method not allowed')
+      return
+    }
+    try {
+      const body = await readJsonBody(req)
+      const texts = await translateMany(body.texts, body.target || 'en')
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ texts }))
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: String(e && e.message ? e.message : e) }))
     }
     return
   }

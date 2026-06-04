@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
 import { downloadStoryHtml } from '../share'
 import { useNarration, NARRATION_LANGS } from '../narration'
+import { translateBook } from '../translateClient'
 import PhotoChat from './PhotoChat'
 
 export default function StoryViewer({ book, onExit }) {
@@ -14,19 +15,50 @@ export default function StoryViewer({ book, onExit }) {
   const [chatOpen, setChatOpen] = useState(false)
   const touch = useRef({ x: 0, y: 0, t: 0 })
 
+  // Display/narration language. '' = show the story as authored. When set, the
+  // visible text is translated to it and the audio narrates that same text.
+  const [textLang, setTextLang] = useState('')
+  const [translations, setTranslations] = useState({}) // lang -> translated book
+
   // A new generated book resets the viewer.
   useEffect(() => {
     setLiveBook(book)
     setIndex(0)
   }, [book])
 
-  const slides = useMemo(() => buildSlides(liveBook), [liveBook])
+  // Edits invalidate any cached translations.
+  useEffect(() => {
+    setTranslations({})
+  }, [liveBook])
+
+  // Translate the visible text whenever a language is chosen.
+  useEffect(() => {
+    let cancelled = false
+    if (!textLang || translations[textLang]) return
+    translateBook(liveBook, textLang)
+      .then((tb) => !cancelled && setTranslations((prev) => ({ ...prev, [textLang]: tb })))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [textLang, liveBook, translations])
+
+  const translated = textLang ? translations[textLang] : null
+  const displayBook = translated || liveBook
+  const slides = useMemo(() => buildSlides(displayBook), [displayBook])
 
   const total = slides.length
   const slide = slides[index]
   const pageIndex = slide && slide.type === 'photo' ? index - 1 : -1
 
-  const narration = useNarration({ slides, index, setIndex })
+  // If the visible text is already translated, the audio shouldn't translate
+  // again; otherwise let the server translate to the chosen voice language.
+  const narration = useNarration({ slides, index, setIndex, translateAudio: !translated })
+
+  function changeLang(v) {
+    narration.setLang(v)
+    setTextLang(v)
+  }
 
   // Close the editor when leaving a photo slide.
   useEffect(() => {
@@ -119,7 +151,7 @@ export default function StoryViewer({ book, onExit }) {
       <button
         className="viewer-share"
         aria-label="Download as HTML to share"
-        onClick={() => downloadStoryHtml(liveBook)}
+        onClick={() => downloadStoryHtml(displayBook)}
       >
         ⤓ Share
       </button>
@@ -141,8 +173,8 @@ export default function StoryViewer({ book, onExit }) {
           <select
             className="narrate-lang"
             value={narration.lang}
-            onChange={(e) => narration.setLang(e.target.value)}
-            aria-label="Narration language"
+            onChange={(e) => changeLang(e.target.value)}
+            aria-label="Story & narration language"
           >
             {NARRATION_LANGS.map((l) => (
               <option key={l.code} value={l.code}>
@@ -151,6 +183,7 @@ export default function StoryViewer({ book, onExit }) {
               </option>
             ))}
           </select>
+          {textLang && !translations[textLang] && <span className="narrate-note">Translating…</span>}
           {narration.note && <span className="narrate-note">{narration.note}</span>}
         </div>
       )}
