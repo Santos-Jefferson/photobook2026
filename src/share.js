@@ -4,6 +4,7 @@
 // server, no build, no internet required. Great for sharing an MVP for review.
 
 import { buildSlides } from './book'
+import { narrationTextForSlide, fetchAudioDataUri } from './narration'
 
 // The standalone viewer's script. Plain ES5-ish JS, NO template literals or
 // `${...}` so it can live safely inside the template literal below. `__STORY__`
@@ -28,21 +29,36 @@ const VIEWER_SCRIPT = `
     return d.innerHTML;
   }
 
+  var collage = STORY.collage || [];
+
+  // A band of all the story photos at the bottom of the opening/closing covers,
+  // mirroring the in-app viewer so the covers aren't text-only.
+  function collageHtml() {
+    if (!collage.length) return '';
+    var shown = collage.slice(0, 9);
+    var cells = '';
+    for (var i = 0; i < shown.length; i++) {
+      cells += '<span class="cover-collage-cell"><img src="' + shown[i] + '" alt="" aria-hidden="true" /></span>';
+    }
+    return '<div class="cover-collage cells-' + shown.length + '">' + cells + '<div class="cover-collage-fade"></div></div>';
+  }
+
   function renderSlide(s) {
+    var hasCollage = collage.length ? ' has-collage' : '';
     if (s.type === 'opening') {
       var inner =
         (s.vibe ? '<span class="kicker">' + escapeText(s.vibe) + '</span>' : '') +
         '<h1 class="cover-title">' + escapeText(s.title) + '</h1>' +
         '<p class="cover-body">' + escapeText(s.text) + '</p>' +
         '<span class="swipe-hint">swipe to begin &rarr;</span>';
-      return el('div', 'slide slide-text slide-opening in', '<div class="slide-text-inner">' + inner + '</div>');
+      return el('div', 'slide slide-text slide-opening' + hasCollage + ' in', '<div class="slide-text-inner">' + inner + '</div>' + collageHtml());
     }
     if (s.type === 'closing') {
       var c =
         '<span class="kicker">the end</span>' +
         '<p class="cover-body large">' + escapeText(s.text) + '</p>' +
         '<h2 class="closing-title">' + escapeText(s.title) + '</h2>';
-      return el('div', 'slide slide-text slide-closing in', '<div class="slide-text-inner">' + c + '</div>');
+      return el('div', 'slide slide-text slide-closing' + hasCollage + ' in', '<div class="slide-text-inner">' + c + '</div>' + collageHtml());
     }
     var node = el('div', 'slide slide-photo in');
     if (s.image) {
@@ -66,6 +82,52 @@ const VIEWER_SCRIPT = `
     return node;
   }
 
+  // --- narration: each slide may carry an embedded base64 audio clip ---
+  var narrating = false;
+  var advanceTimer = null;
+  var audioEl = (typeof Audio !== 'undefined') ? new Audio() : null;
+  var hasAudio = false;
+  for (var ai = 0; ai < slides.length; ai++) {
+    if (slides[ai].audio) { hasAudio = true; break; }
+  }
+  if (audioEl) {
+    audioEl.addEventListener('ended', function () { if (narrating) autoNext(); });
+  }
+
+  function stopAudio() {
+    if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+    if (audioEl) { try { audioEl.pause(); } catch (e) {} }
+  }
+
+  function autoNext() {
+    if (index < slides.length - 1) go(1);
+    else setNarrating(false);
+  }
+
+  function playCurrent() {
+    stopAudio();
+    if (!narrating) return;
+    var s = slides[index];
+    if (audioEl && s && s.audio) {
+      audioEl.src = s.audio;
+      var p = audioEl.play();
+      if (p && p.catch) p.catch(function () {});
+    } else {
+      // A slide with no narration (e.g. a caption-less photo): hold, then move on.
+      advanceTimer = setTimeout(function () { if (narrating) autoNext(); }, 2600);
+    }
+  }
+
+  function setNarrating(on) {
+    narrating = on;
+    if (on) playCurrent(); else stopAudio();
+    var btn = document.getElementById('narrate-btn');
+    if (btn) {
+      btn.className = 'share-narrate-btn' + (on ? ' on' : '');
+      btn.innerHTML = (on ? '\\u23f8' : '\\u25b6') + '<span>' + (on ? 'Narrating' : 'Narrate') + '</span>';
+    }
+  }
+
   function render() {
     app.innerHTML = '';
     var viewer = el('div', 'viewer');
@@ -77,6 +139,16 @@ const VIEWER_SCRIPT = `
       progress.appendChild(seg);
     }
     viewer.appendChild(progress);
+
+    if (hasAudio) {
+      var nbar = el('div', 'share-narrate');
+      var btn = el('button', 'share-narrate-btn' + (narrating ? ' on' : ''),
+        (narrating ? '\\u23f8' : '\\u25b6') + '<span>' + (narrating ? 'Narrating' : 'Narrate') + '</span>');
+      btn.id = 'narrate-btn';
+      btn.onclick = function () { setNarrating(!narrating); };
+      nbar.appendChild(btn);
+      viewer.appendChild(nbar);
+    }
 
     viewer.appendChild(renderSlide(slides[index]));
 
@@ -102,8 +174,11 @@ const VIEWER_SCRIPT = `
   }
 
   function go(d) {
-    index = Math.min(Math.max(index + d, 0), slides.length - 1);
+    var next = Math.min(Math.max(index + d, 0), slides.length - 1);
+    if (next === index) return;
+    index = next;
     render();
+    if (narrating) playCurrent();
   }
 
   document.addEventListener('keydown', function (e) {
@@ -156,10 +231,21 @@ const VIEWER_STYLE = `
   .caption { font-size: 26px; line-height: 1.2; font-weight: 800; margin: 0 0 8px; color: #fff; text-shadow: 0 2px 18px rgba(0,0,0,0.6); }
   .narrative { font-size: 16px; line-height: 1.55; margin: 0; color: #eef2f6; text-shadow: 0 1px 12px rgba(0,0,0,0.7); }
   .style-chip { display: inline-block; margin-top: 14px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 20px; }
-  .slide-text { display: grid; place-items: center; padding: 40px 30px; }
-  .slide-opening { background: radial-gradient(120% 90% at 50% 18%, #eaf6fc 0%, #f3f9fc 55%, #ffffff 100%); }
-  .slide-closing { background: radial-gradient(120% 90% at 50% 82%, #e6faf5 0%, #f1fbf8 55%, #ffffff 100%); }
-  .slide-text-inner { max-width: 32ch; text-align: center; }
+  .slide-text { display: flex; flex-direction: column; overflow: hidden; }
+  .slide-opening { --cover-fade: #f4f9fc; background: radial-gradient(120% 90% at 50% 18%, #eaf6fc 0%, #f3f9fc 55%, #ffffff 100%); }
+  .slide-closing { --cover-fade: #f2fbf8; background: radial-gradient(120% 90% at 50% 82%, #e6faf5 0%, #f1fbf8 55%, #ffffff 100%); }
+  .slide-text-inner { margin: auto; max-width: 32ch; text-align: center; padding: 44px 30px 16px; z-index: 2; }
+  .cover-collage { position: relative; flex: 0 0 auto; height: 46%; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 3px; overflow: hidden; opacity: 0; transition: opacity 0.6s ease 0.1s; }
+  .slide.in .cover-collage { opacity: 1; }
+  .cover-collage.cells-1 { grid-template-columns: 1fr; }
+  .cover-collage.cells-2 { grid-template-columns: repeat(2, 1fr); }
+  .cover-collage.cells-4 { grid-template-columns: repeat(2, 1fr); }
+  .cover-collage-cell { overflow: hidden; }
+  .cover-collage-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cover-collage-fade { position: absolute; top: 0; left: 0; right: 0; height: 72px; background: linear-gradient(to top, transparent, var(--cover-fade, #fff)); pointer-events: none; }
+  .share-narrate { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 28; }
+  .share-narrate-btn { display: inline-flex; align-items: center; gap: 7px; border: none; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; color: #0b1620; background: rgba(255,255,255,0.92); padding: 8px 15px; border-radius: 22px; box-shadow: 0 4px 16px rgba(15,45,75,0.22); }
+  .share-narrate-btn.on { background: #0aa1dd; color: #fff; }
   .kicker { display: inline-block; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: #0aa1dd; font-weight: 700; margin-bottom: 18px; }
   .cover-title { font-size: 40px; line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 18px; font-weight: 800; color: #16202c; }
   .cover-body { font-size: 18px; line-height: 1.6; color: #46586a; margin: 0; }
@@ -171,11 +257,19 @@ const VIEWER_STYLE = `
   }
 `
 
-// Build the full standalone HTML document for a finished book.
-export function buildShareHtml(book) {
+// Build the full standalone HTML document for a finished book. `audio`, when
+// given, is an array of base64 data URIs aligned to the slides — embedded so
+// the exported file can narrate offline.
+export function buildShareHtml(book, audio) {
   const slides = buildSlides(book)
   const title = (book && book.title) || 'Photobook Story'
-  const data = { title, slides }
+  // All story photos, shown as a collage band on the opening/closing covers.
+  const collage = slides.filter((s) => s.type === 'photo' && s.image).map((s) => s.image)
+  const withAudio =
+    Array.isArray(audio) && audio.length
+      ? slides.map((s, i) => (audio[i] ? { ...s, audio: audio[i] } : s))
+      : slides
+  const data = { title, slides: withAudio, collage }
 
   // Embedded as a JS object literal. Escaping `<` is what prevents the JSON
   // from prematurely closing the surrounding <script> tag (e.g. via "</...").
@@ -214,9 +308,30 @@ function slugify(s) {
   )
 }
 
-// Generate the file and trigger a download in the browser.
-export function downloadStoryHtml(book) {
-  const html = buildShareHtml(book)
+// Pre-generate narration audio for each slide in `lang`, returned as an array
+// of base64 data URIs aligned to the slides (null where there's no narration or
+// generation fails — the export degrades gracefully without that clip).
+export async function collectNarrationAudio(book, lang = 'en') {
+  const slides = buildSlides(book)
+  return Promise.all(
+    slides.map((s) => {
+      const text = narrationTextForSlide(s)
+      if (!text) return null
+      return fetchAudioDataUri(text, lang).catch(() => null)
+    }),
+  )
+}
+
+// Generate the file and trigger a download in the browser. `lang` is the
+// current display/narration language; its audio is embedded for offline play.
+export async function downloadStoryHtml(book, lang = 'en') {
+  let audio = null
+  try {
+    audio = await collectNarrationAudio(book, lang)
+  } catch {
+    audio = null // network/endpoint unavailable — export silently without audio
+  }
+  const html = buildShareHtml(book, audio)
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

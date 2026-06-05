@@ -19,6 +19,7 @@ export default function StoryViewer({ book, onExit }) {
   // visible text is translated to it and the audio narrates that same text.
   const [textLang, setTextLang] = useState('')
   const [translations, setTranslations] = useState({}) // lang -> translated book
+  const [sharing, setSharing] = useState(false) // generating the export (audio takes a moment)
 
   // A new generated book resets the viewer.
   useEffect(() => {
@@ -64,6 +65,18 @@ export default function StoryViewer({ book, onExit }) {
   function changeLang(v) {
     narration.setLang(v)
     setTextLang(v)
+  }
+
+  // Export the on-screen story (translated text + collage) and embed narration
+  // audio for the current language so the shared .html plays offline.
+  async function share() {
+    if (sharing) return
+    setSharing(true)
+    try {
+      await downloadStoryHtml(displayBook, textLang || 'en')
+    } finally {
+      setSharing(false)
+    }
   }
 
   // Close the editor when leaving a photo slide.
@@ -157,9 +170,10 @@ export default function StoryViewer({ book, onExit }) {
       <button
         className="viewer-share"
         aria-label="Download as HTML to share"
-        onClick={() => downloadStoryHtml(displayBook)}
+        onClick={share}
+        disabled={sharing}
       >
-        ⤓ Share
+        {sharing ? '… Preparing' : '⤓ Share'}
       </button>
       <button className="viewer-debug" aria-label="Debug" onClick={() => setShowDebug((s) => !s)}>
         {'{}'}
@@ -240,8 +254,8 @@ export default function StoryViewer({ book, onExit }) {
 
       {slide.type === 'closing' && (
         <div className="closing-actions">
-          <button className="restart restart-share" onClick={() => downloadStoryHtml(book)}>
-            ⤓ Download to share
+          <button className="restart restart-share" onClick={share} disabled={sharing}>
+            {sharing ? '… Preparing' : '⤓ Download to share'}
           </button>
           <button className="restart restart-ghost" onClick={onExit}>
             Make another

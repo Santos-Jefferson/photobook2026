@@ -28,6 +28,27 @@ export function narrationTextForSlide(slide) {
   return [slide.caption, slide.narrative].filter(Boolean).join('. ')
 }
 
+// Fetch narration audio and return it as a base64 `data:` URI so it can be
+// embedded directly in the standalone share export (which runs offline, with no
+// server to call). `translate` is false here because the share text is already
+// in the chosen display language — the endpoint only needs `lang` for the voice.
+export async function fetchAudioDataUri(text, code) {
+  const res = await fetch(NARRATE_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, lang: code, translate: false }),
+  })
+  if (!res.ok) throw new Error('narrate ' + res.status)
+  const blob = await res.blob()
+  if (!blob.type || !blob.type.startsWith('audio')) throw new Error('not audio')
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result)
+    r.onerror = () => reject(new Error('read failed'))
+    r.readAsDataURL(blob)
+  })
+}
+
 export function useNarration({ slides, index, setIndex, translateAudio = true }) {
   const synth = typeof window !== 'undefined' ? window.speechSynthesis : null
   const canAudio = typeof window !== 'undefined' && typeof window.Audio !== 'undefined'
