@@ -1,0 +1,31 @@
+# Production values for the ml-hackathon cluster — mirrors the genius-narration
+# ingress (nginx-internal + external-dns + cert-manager TLS).
+#
+#   helm upgrade --install photobook deployment/helm/photobook \
+#     --namespace ml-hackathon -f deployment/helm/values-prod.yaml
+#
+# Override the image tag per build, e.g. --set image.tag=snapshot-1.0.0-<sha>
+
+image:
+  repository: 096016688168.dkr.ecr.us-east-1.amazonaws.com/sncr/bda/ml/photobook-snapshots
+  tag: snapshot-1.0.0-e9b50e2
+
+ingress:
+  enabled: true
+  className: nginx-internal
+  annotations:
+    cert-manager.io/cluster-issuer: sncr-letsencrypt-clusterissuer
+    external-dns.alpha.kubernetes.io/hostname: photobook.use.eks.mcap.sip.dev.cloud.synchronoss.net
+    external-dns.alpha.kubernetes.io/target: sip-eks-mcap-use-dev-dft-nlb-6ef2d80b0cc8f2d3.elb.us-east-1.amazonaws.com
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 30m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+  hosts:
+    - host: photobook.use.eks.mcap.sip.dev.cloud.synchronoss.net
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: photobook-tls
+      hosts:
+        - photobook.use.eks.mcap.sip.dev.cloud.synchronoss.net
