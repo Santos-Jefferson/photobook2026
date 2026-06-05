@@ -41,5 +41,6 @@ COPY server ./server
 COPY lib ./lib
 
 EXPOSE 5050
-USER node
+# Numeric uid (the image's "node" user) so k8s runAsNonRoot can verify it.
+USER 1000:1000
 CMD ["node", "server/index.js"]

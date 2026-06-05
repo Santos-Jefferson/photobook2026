@@ -40,6 +40,14 @@ env: {}
   # EDGE_VOICE_JA: ja-JP-KeitaNeural
   # HTTPS_PROXY: http://proxy.company.com:8080
 
+# Pod security context. runAsNonRoot needs a NUMERIC uid to be verifiable; the
+# image's "node" user is uid/gid 1000.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
 resources:
   requests:
     cpu: 100m
