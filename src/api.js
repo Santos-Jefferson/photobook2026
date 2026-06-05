@@ -42,7 +42,7 @@ export function fileToBase64(file) {
 // landscape. This bakes the EXIF rotation into the actual pixels (and lightly
 // caps the size) so the server — and the final story — keep the orientation
 // the user actually sees. Returns raw base64 (no data: prefix).
-export async function fileToOrientedBase64(file, maxDim = 2048) {
+export async function fileToOrientedBase64(file, maxDim = 1536) {
   try {
     // `imageOrientation: 'from-image'` applies the EXIF rotation to the bitmap.
     const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })

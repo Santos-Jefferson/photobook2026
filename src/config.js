@@ -38,4 +38,4 @@ export const STYLES = [
   'Whimsy_Anime',
 ]
 
-export const MAX_PHOTOS = 12
+export const MAX_PHOTOS = 5
