@@ -92,6 +92,13 @@ function sendFile(res, filePath) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost')
 
+  // --- health check (for k8s liveness/readiness probes) ---
+  if (url.pathname === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end('ok')
+    return
+  }
+
   // --- narration API ---
   if (url.pathname === '/api/narrate') {
     if (req.method !== 'POST') {

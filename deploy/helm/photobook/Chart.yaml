@@ -1,0 +1,6 @@
+apiVersion: v2
+name: photobook
+description: Photobook — Vite SPA + Node server (narration & translation) in one container
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

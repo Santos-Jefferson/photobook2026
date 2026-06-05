@@ -150,6 +150,42 @@ language and synthesizes free Microsoft Edge neural voices — no API key needed
 > (their browser calls the API directly). For those reviewers, use **Demo mode**
 > or send them a **Share → Download HTML** export, which is fully self-contained.
 
+## ☸️ Deploy on Kubernetes (Docker + Helm)
+
+The Node server serves the built SPA **and** the `/api/narrate` + `/api/translate`
+endpoints, so it's a **single container**.
+
+```bash
+# 1) build & push the image (optionally bake the photobook API URL/key)
+docker build -t your-registry/photobook:0.1.0 \
+  --build-arg VITE_PHOTOBOOK_API_URL=https://.../v1/genius/photobook \
+  --build-arg VITE_PHOTOBOOK_API_KEY=dev-secret .
+docker push your-registry/photobook:0.1.0
+
+# 2) install with Helm
+helm upgrade --install photobook deploy/helm/photobook \
+  --set image.repository=your-registry/photobook \
+  --set image.tag=0.1.0 \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host=photobook.yourcompany.com \
+  --set ingress.hosts[0].paths[0].path=/ \
+  --set ingress.hosts[0].paths[0].pathType=Prefix
+```
+
+The chart (`deploy/helm/photobook`) ships a Deployment (with `/healthz`
+liveness/readiness probes), Service, and optional Ingress. Tune `values.yaml`
+for replicas, resources, ingress/TLS, autoscaling, and env.
+
+Things to know:
+- **`VITE_*` are build-time** (baked into the bundle) — pass them as
+  `--build-arg`, not runtime env. They end up in the public client JS.
+- **No runtime secrets needed** — narration uses free Edge neural voices and
+  translation is key-less.
+- **Egress:** pods need outbound internet for the voice/translation services.
+  No direct egress? Set `--set env.HTTPS_PROXY=http://proxy:8080`.
+- **Internal photobook API:** the browser calls it directly, so the cluster's
+  users must be able to reach that host (same as today).
+
 ## 🗂 Structure
 
 ```
