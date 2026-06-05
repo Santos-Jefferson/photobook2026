@@ -10,6 +10,10 @@ export const NARRATION_LANGS = [
   { code: 'pt', label: 'Português', bcp: 'pt-BR' },
   { code: 'es', label: 'Español', bcp: 'es-ES' },
   { code: 'ja', label: '日本語', bcp: 'ja-JP' },
+  { code: 'hi', label: 'हिन्दी', bcp: 'hi-IN' },
+  { code: 'ta', label: 'தமிழ்', bcp: 'ta-IN' },
+  { code: 'te', label: 'తెలుగు', bcp: 'te-IN' },
+  { code: 'bn', label: 'বাংলা', bcp: 'bn-IN' },
 ]
 
 const NARRATE_ENDPOINT = '/api/narrate'
