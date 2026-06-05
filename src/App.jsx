@@ -25,6 +25,15 @@ export default function App() {
       const result = normalizeBook(raw)
       console.log('[Photobook] normalized book:', result)
 
+      // Keep each uploaded photo as a fallback so a page still shows an image
+      // when the API returns no styled image (e.g. stylize disabled). Pages
+      // come back in the same order as the photos we sent.
+      if (result && Array.isArray(result.pages) && Array.isArray(previewDataUrls)) {
+        result.pages.forEach((p, i) => {
+          if (p && !p.original_image && previewDataUrls[i]) p.original_image = previewDataUrls[i]
+        })
+      }
+
       const hasContent = result && (result.opening || (Array.isArray(result.pages) && result.pages.length))
       if (!hasContent) {
         setError(

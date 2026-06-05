@@ -86,7 +86,9 @@ export function buildSlides(book) {
       page: p.page,
       narrative: p.narrative_beat,
       caption: p.caption,
-      image: resolveImageSrc(p.styled_image_b64),
+      // Prefer the styled image; fall back to the original upload when the API
+      // returned no styled image (e.g. stylize was off).
+      image: resolveImageSrc(p.styled_image_b64) || resolveImageSrc(p.original_image),
       styleApplied: p.style_applied,
     })
   }
