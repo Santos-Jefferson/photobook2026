@@ -7,3 +7,7 @@ dist-ssr
 .DS_Store
 *.log
 .vite
+
+# Helm packages / build
+deployment/helm/packages/
+*.bak

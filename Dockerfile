@@ -9,6 +9,9 @@ RUN npm ci
 
 COPY . .
 
+# Version (passed by the Makefile / Bamboo) — recorded as an image label.
+ARG APP_VERSION=0.0.0
+
 # Client config is baked into the bundle at build time (Vite). Optional — the
 # defaults in src/config.js are used if these aren't provided.
 ARG VITE_PHOTOBOOK_API_URL
@@ -23,6 +26,9 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5050
+ARG APP_VERSION=0.0.0
+LABEL org.opencontainers.image.title="photobook" \
+      org.opencontainers.image.version="${APP_VERSION}"
 
 # Production deps only (server uses msedge-tts + undici; the rest is bundled
 # into dist/ already).

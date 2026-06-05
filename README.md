@@ -155,24 +155,42 @@ language and synthesizes free Microsoft Edge neural voices — no API key needed
 The Node server serves the built SPA **and** the `/api/narrate` + `/api/translate`
 endpoints, so it's a **single container**.
 
-```bash
-# 1) build & push the image (optionally bake the photobook API URL/key)
-docker build -t your-registry/photobook:0.1.0 \
-  --build-arg VITE_PHOTOBOOK_API_URL=https://.../v1/genius/photobook \
-  --build-arg VITE_PHOTOBOOK_API_KEY=dev-secret .
-docker push your-registry/photobook:0.1.0
+### CI (Bamboo) — `Makefile`
 
-# 2) install with Helm
-helm upgrade --install photobook deploy/helm/photobook \
+The `Makefile` mirrors the company's ECR/Helm-OCI flow. Image tag is
+`snapshot-<ver>-<sha>` off a normal commit, or `<ver>` when HEAD has a `v*` tag
+(release). Versions live in `.release_number` / `.helm_release_number`.
+
+```bash
+make show-config          # print resolved image/tag/repo/versions
+make all                  # build + push image, package + push helm chart (ECR/OCI)
+make all_ecr              # image only
+make all_helm             # chart only
+make bump-patch           # bump app version (also: bump-minor)
+make bump-helm-patch      # bump chart version + Chart.yaml (also: bump-helm-minor)
+```
+
+Bamboo provides `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` and
+`bamboo_build_working_directory`; the `ecr-login`/`push-ecr` targets use the
+rootless docker context like the reference plan. Edit `APP_NAME`, `AWS_ACCOUNT`,
+`ECR_NAMESPACE` in the `Makefile` if they differ.
+
+### Manual (without the Makefile)
+
+```bash
+docker build -t your-registry/photobook:1.0.0 --build-arg APP_VERSION=1.0.0 .
+docker push your-registry/photobook:1.0.0
+
+helm upgrade --install photobook deployment/helm/photobook \
   --set image.repository=your-registry/photobook \
-  --set image.tag=0.1.0 \
+  --set image.tag=1.0.0 \
   --set ingress.enabled=true \
   --set ingress.hosts[0].host=photobook.yourcompany.com \
   --set ingress.hosts[0].paths[0].path=/ \
   --set ingress.hosts[0].paths[0].pathType=Prefix
 ```
 
-The chart (`deploy/helm/photobook`) ships a Deployment (with `/healthz`
+The chart (`deployment/helm/photobook`) ships a Deployment (with `/healthz`
 liveness/readiness probes), Service, and optional Ingress. Tune `values.yaml`
 for replicas, resources, ingress/TLS, autoscaling, and env.
 
