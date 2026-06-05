@@ -51,6 +51,12 @@ export default function StoryViewer({ book, onExit }) {
   const slide = slides[index]
   const pageIndex = slide && slide.type === 'photo' ? index - 1 : -1
 
+  // All story photos, used as a collage on the opening/closing covers.
+  const collageImages = useMemo(
+    () => slides.filter((s) => s.type === 'photo' && s.image).map((s) => s.image),
+    [slides],
+  )
+
   // If the visible text is already translated, the audio shouldn't translate
   // again; otherwise let the server translate to the chosen voice language.
   const narration = useNarration({ slides, index, setIndex, translateAudio: !translated })
@@ -194,7 +200,7 @@ export default function StoryViewer({ book, onExit }) {
         </div>
       )}
 
-      <Slide slide={slide} revealed={revealed} />
+      <Slide slide={slide} revealed={revealed} collageImages={collageImages} />
 
       {/* tap zones */}
       <button className="tapzone tapzone-left" aria-label="Previous" onClick={() => go(-1)} />
@@ -246,34 +252,55 @@ export default function StoryViewer({ book, onExit }) {
   )
 }
 
-function Slide({ slide, revealed }) {
+function Slide({ slide, revealed, collageImages }) {
+  const hasCollage = Array.isArray(collageImages) && collageImages.length > 0
+
   if (slide.type === 'opening') {
     return (
-      <div className={`slide slide-text slide-opening ${revealed ? 'in' : ''}`}>
+      <div className={`slide slide-text slide-opening ${hasCollage ? 'has-collage' : ''} ${revealed ? 'in' : ''}`}>
         <div className="slide-text-inner">
           {slide.vibe && <span className="kicker">{slide.vibe}</span>}
           <h1 className="cover-title">{slide.title}</h1>
           <p className="cover-body">{slide.text}</p>
           <span className="swipe-hint">swipe to begin →</span>
         </div>
+        <CoverCollage images={collageImages} />
       </div>
     )
   }
 
   if (slide.type === 'closing') {
     return (
-      <div className={`slide slide-text slide-closing ${revealed ? 'in' : ''}`}>
+      <div className={`slide slide-text slide-closing ${hasCollage ? 'has-collage' : ''} ${revealed ? 'in' : ''}`}>
         <div className="slide-text-inner">
           <span className="kicker">the end</span>
           <p className="cover-body large">{slide.text}</p>
           <h2 className="closing-title">{slide.title}</h2>
         </div>
+        <CoverCollage images={collageImages} />
       </div>
     )
   }
 
   // photo slide
   return <PhotoSlide slide={slide} revealed={revealed} />
+}
+
+// A grid of all the story's photos, shown as a band at the bottom of the
+// opening/closing covers so they aren't text-only.
+function CoverCollage({ images }) {
+  if (!Array.isArray(images) || images.length === 0) return null
+  const shown = images.slice(0, 9)
+  return (
+    <div className={`cover-collage cells-${shown.length}`}>
+      {shown.map((src, i) => (
+        <span className="cover-collage-cell" key={i}>
+          <img src={src} alt="" aria-hidden="true" />
+        </span>
+      ))}
+      <div className="cover-collage-fade" />
+    </div>
+  )
 }
 
 function PhotoSlide({ slide, revealed }) {
