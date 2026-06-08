@@ -1463,7 +1463,7 @@ button {
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  margin-bottom: 4px;
+  margin-bottom: 84px; /* reserve room above the fixed primary CTA */
 }
 .memories-cta-sub {
   font-size: 12px;
