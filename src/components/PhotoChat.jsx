@@ -33,7 +33,6 @@ export default function PhotoChat({
   onClose,
 }) {
   const [analysis, setAnalysis] = useState(null)
-  const [analyzing, setAnalyzing] = useState(true)
   const [thread, setThread] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -60,17 +59,15 @@ export default function PhotoChat({
   const scroller = useRef(null)
   useEffect(() => {
     if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight
-  }, [thread, analyzing])
+  }, [thread])
 
-  // Analyze once when the panel opens to get suggestions + image_type.
+  // Analyze once in the background to get image_type (improves edit context).
+  // The result is intentionally not surfaced — no description/suggestions UI.
   useEffect(() => {
     let cancelled = false
-    setAnalyzing(true)
-    setErr('')
     analyzePhoto(photoRef.current)
       .then((a) => !cancelled && setAnalysis(a))
-      .catch((e) => !cancelled && setErr(e.message || String(e)))
-      .finally(() => !cancelled && setAnalyzing(false))
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -206,14 +203,11 @@ export default function PhotoChat({
     }
   }
 
-  const suggestions = (analysis && analysis.suggestions) || []
-
   return (
     <div className="chat" onClick={(e) => e.stopPropagation()}>
       <div className="chat-head">
         <div>
           <strong>Edit this photo</strong>
-          {analysis && analysis.image_type && <span className="chat-type">{analysis.image_type}</span>}
         </div>
         <div className="chat-head-actions">
           {canRevert && (
@@ -234,10 +228,6 @@ export default function PhotoChat({
       </div>
 
       <div className="chat-body" ref={scroller}>
-        {analyzing && <p className="chat-muted">Analyzing photo…</p>}
-
-        {analysis && analysis.description && <p className="chat-desc">{analysis.description}</p>}
-
         {/* memory actions — quick AI transforms of this memory */}
         <div className="chat-actions">
           {MEMORY_ACTIONS.map((a) => (
@@ -305,16 +295,6 @@ export default function PhotoChat({
             <button className="card-generate" disabled={busy} onClick={runGreetingCard}>
               Generate card
             </button>
-          </div>
-        )}
-
-        {!thread.length && suggestions.length > 0 && (
-          <div className="chat-suggestions">
-            {suggestions.map((s, i) => (
-              <button key={i} className="chip" disabled={busy} onClick={() => send(s)}>
-                {s}
-              </button>
-            ))}
           </div>
         )}
 
