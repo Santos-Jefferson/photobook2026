@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { MEMORIES, memoryCoverImage, buildMemoryFiles } from '../demoMemory'
+import { useEffect, useRef, useState } from 'react'
 import { listMemories, saveMemory, deleteMemory } from '../memoryStore'
 import { fileToOrientedBase64 } from '../api'
 
 const MAX_MEMORY_PHOTOS = 8
 
-// A Capsyl-style "Memories" gallery: a grid of cards, each a themed cluster of
-// photos summarized by a single title + date range. Users can create their own
-// memory from their photos; opening any memory offers "Create photobook".
+// A Capsyl-style "Memories" gallery built from the user's own memories: each a
+// cluster of their photos summarized by a single title. Opening one offers
+// "Create photobook".
 export default function Memories({ onCreate, onBack }) {
-  const covers = useMemo(() => Object.fromEntries(MEMORIES.map((m) => [m.id, memoryCoverImage(m)])), [])
-  const [mine, setMine] = useState([])
+  const [mine, setMine] = useState(null) // null = loading
   const [selected, setSelected] = useState(null)
   const [creating, setCreating] = useState(false)
 
@@ -38,14 +36,7 @@ export default function Memories({ onCreate, onBack }) {
   }
 
   if (selected) {
-    return (
-      <MemoryDetail
-        memory={selected}
-        cover={selected.isUser ? selected.photos[0] : covers[selected.id]}
-        onBack={() => setSelected(null)}
-        onCreate={onCreate}
-      />
-    )
+    return <MemoryDetail memory={selected} onBack={() => setSelected(null)} onCreate={onCreate} />
   }
 
   async function remove(e, id) {
@@ -55,6 +46,8 @@ export default function Memories({ onCreate, onBack }) {
     refresh()
   }
 
+  const items = mine || []
+
   return (
     <div className="memories">
       <header className="memories-head">
@@ -62,9 +55,9 @@ export default function Memories({ onCreate, onBack }) {
           ‹ Back
         </button>
         <h1>Memories</h1>
-        <span className="memories-count">{mine.length + MEMORIES.length}</span>
+        <span className="memories-count">{items.length}</span>
       </header>
-      <p className="memories-sub">Pick a memory to turn its photos into a story — or create your own.</p>
+      <p className="memories-sub">Group photos from one moment into a memory, then turn it into a story.</p>
 
       <div className="memories-grid">
         <button className="memory-card memory-new" onClick={() => setCreating(true)}>
@@ -72,59 +65,31 @@ export default function Memories({ onCreate, onBack }) {
           <span>New memory</span>
         </button>
 
-        {mine.map((m) => (
+        {items.map((m) => (
           <button key={m.id} className="memory-card" onClick={() => setSelected(m)}>
             <img src={m.photos[0]} alt="" />
             <div className="memory-card-scrim" />
             <div className="memory-card-text">
               <span className="memory-card-title">{m.title}</span>
-              <span className="memory-card-date">{m.photos.length} photos · {m.dateRange}</span>
+              <span className="memory-card-date">
+                {m.photos.length} photos · {m.dateRange}
+              </span>
             </div>
-            <span className="memory-mine-badge">mine</span>
             <span className="memory-del" role="button" onClick={(e) => remove(e, m.id)}>
               🗑
             </span>
           </button>
         ))}
-
-        {MEMORIES.map((m) => (
-          <button key={m.id} className="memory-card" onClick={() => setSelected(m)}>
-            <img src={covers[m.id]} alt="" />
-            <div className="memory-card-scrim" />
-            <div className="memory-card-text">
-              <span
-                className="memory-card-title"
-                style={{ fontFamily: m.font, textTransform: m.uppercase ? 'uppercase' : 'none' }}
-              >
-                {m.title}
-              </span>
-              <span className="memory-card-date">{m.dateRange}</span>
-            </div>
-          </button>
-        ))}
       </div>
+
+      {mine && items.length === 0 && (
+        <p className="memories-empty">No memories yet — tap “New memory” to create your first one.</p>
+      )}
     </div>
   )
 }
 
-function MemoryDetail({ memory, cover, onBack, onCreate }) {
-  const [thumbs, setThumbs] = useState(memory.isUser ? memory.photos : null)
-
-  useEffect(() => {
-    if (memory.isUser) return
-    let urls = []
-    let cancelled = false
-    buildMemoryFiles(memory).then((files) => {
-      if (cancelled) return
-      urls = files.map((f) => URL.createObjectURL(f))
-      setThumbs(urls)
-    })
-    return () => {
-      cancelled = true
-      urls.forEach((u) => URL.revokeObjectURL(u))
-    }
-  }, [memory])
-
+function MemoryDetail({ memory, onBack, onCreate }) {
   return (
     <div className="memory-detail">
       <header className="memories-head">
@@ -134,31 +99,20 @@ function MemoryDetail({ memory, cover, onBack, onCreate }) {
       </header>
 
       <div className="memory-hero">
-        <img src={cover} alt="" />
+        <img src={memory.photos[0]} alt="" />
         <div className="memory-hero-scrim" />
         <div className="memory-hero-text">
-          <span
-            className="memory-hero-title"
-            style={{ fontFamily: memory.font, textTransform: memory.uppercase ? 'uppercase' : 'none' }}
-          >
-            {memory.title}
-          </span>
+          <span className="memory-hero-title">{memory.title}</span>
           <span className="memory-hero-date">
-            {(memory.isUser ? memory.photos.length : memory.scenes.length)} photos · {memory.dateRange}
+            {memory.photos.length} photos · {memory.dateRange}
           </span>
         </div>
       </div>
 
-      {memory.context && <p className="memory-desc">{memory.context}</p>}
-
       <div className="memory-thumbs">
-        {(thumbs || memory.scenes).map((t, i) =>
-          thumbs ? (
-            <img key={i} src={t} alt={`Photo ${i + 1}`} />
-          ) : (
-            <div key={i} className="memory-thumb-skeleton" />
-          ),
-        )}
+        {memory.photos.map((t, i) => (
+          <img key={i} src={t} alt={`Photo ${i + 1}`} />
+        ))}
       </div>
 
       <button className="memory-create" onClick={() => onCreate(memory)}>
@@ -217,14 +171,7 @@ function NewMemory({ onCancel, onSaved }) {
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      <input
-        ref={fileInput}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => addFiles(e.target.files)}
-      />
+      <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => addFiles(e.target.files)} />
 
       <div className="memory-thumbs new">
         {photos.map((p, i) => (

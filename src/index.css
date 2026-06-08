@@ -619,7 +619,7 @@ button {
 .viewer-debug {
   position: absolute;
   bottom: max(14px, env(safe-area-inset-bottom));
-  left: 14px;
+  right: 14px;
   z-index: 30;
   height: 30px;
   padding: 0 10px;
@@ -635,14 +635,58 @@ button {
 /* narration controls (top-left) */
 .narrate-bar {
   position: absolute;
-  top: max(16px, env(safe-area-inset-top));
+  bottom: max(14px, env(safe-area-inset-bottom));
   left: 14px;
   z-index: 30;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  max-width: calc(100% - 120px);
+  gap: 8px;
+  max-width: calc(100% - 28px);
+}
+.narrate-settings {
+  height: 36px;
+  border: none;
+  border-radius: 18px;
+  padding: 0 14px;
+  max-width: 62vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.9);
+  color: #16202c;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-soft);
+}
+.narrate-sheet {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.narrate-sheet .share-sheet-title:not(:first-child) {
+  margin-top: 14px;
+}
+.narrate-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 8px 4px;
+}
+.narrate-opt {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  border-radius: 14px;
+  padding: 10px 15px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+.narrate-opt.sel {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border-color: transparent;
 }
 .narrate-note {
   flex-basis: 100%;

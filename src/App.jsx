@@ -9,7 +9,7 @@ import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase6
 import { normalizeBook } from './book'
 import { rewriteBookPerspective } from './perspectiveClient'
 import { VIBES, STYLES, PERSPECTIVES } from './config'
-import { buildMemoryFiles, bakeMemoryCover, bakeCoverFromImage } from './demoMemory'
+import { bakeCoverFromImage } from './demoMemory'
 import BottomNav from './components/BottomNav'
 
 export default function App() {
@@ -92,33 +92,23 @@ export default function App() {
     setView('story')
   }
 
-  // Generate a photobook straight from an example memory: build its photos, then
-  // run the normal generation flow with a baked Capsyl-style cover.
+  // Generate a photobook straight from a user's memory: their photos feed the
+  // normal generation flow, with a baked Capsyl-style cover (title over the lead
+  // photo).
   async function generateFromMemory(memory) {
     setView('loading')
     setError('')
     try {
-      let photosBase64
-      let previewDataUrls
-      let cover
-      if (memory.isUser) {
-        // The user's own photos are stored as JPEG data URLs.
-        previewDataUrls = memory.photos
-        photosBase64 = memory.photos.map((d) => d.replace(/^data:[^,]+,/, ''))
-        cover = await bakeCoverFromImage(memory.title, memory.photos[0])
-      } else {
-        const files = await buildMemoryFiles(memory)
-        photosBase64 = await Promise.all(files.map(fileToOrientedBase64))
-        previewDataUrls = photosBase64.map((b) => 'data:image/jpeg;base64,' + b)
-        cover = bakeMemoryCover(memory)
-      }
+      const previewDataUrls = memory.photos // JPEG data URLs
+      const photosBase64 = memory.photos.map((d) => d.replace(/^data:[^,]+,/, ''))
+      const cover = await bakeCoverFromImage(memory.title, memory.photos[0])
       const payload = buildPayload({
         photosBase64,
-        vibe: memory.vibe || VIBES[0],
+        vibe: VIBES[0],
         stylizeImages: true,
         style: STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0],
         title: memory.title,
-        context: memory.context || '',
+        context: '',
         perspective: PERSPECTIVES[0].code,
       })
       await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl(), cover })

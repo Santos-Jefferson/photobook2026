@@ -23,6 +23,7 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
   const [translations, setTranslations] = useState({}) // lang -> translated book
   const [sharing, setSharing] = useState(false) // an export/share is in progress
   const [shareMenu, setShareMenu] = useState(false) // export options popover open
+  const [narrateMenu, setNarrateMenu] = useState(false) // language/voice sheet open
   const [saveState, setSaveState] = useState('') // '' | saving | saved | error
   const currentId = useRef(savedId) // the saved-library id this book maps to
 
@@ -96,6 +97,9 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
     narration.setLang(v)
     setTextLang(v)
   }
+
+  const narrateLangLabel = (NARRATION_LANGS.find((l) => l.code === narration.lang) || {}).label || 'Language'
+  const narrateVoiceLabel = (VOICE_OPTIONS.find((v) => v.code === narration.voice) || {}).label || 'Voice'
 
   // Run an export/share action with a shared busy state; closes the menu.
   async function runExport(fn) {
@@ -261,7 +265,7 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
         </div>
       )}
 
-      {/* narration controls */}
+      {/* narration controls — a compact play pill + a sheet for language/voice */}
       {narration.supported && (
         <div className="narrate-bar">
           <button
@@ -272,33 +276,50 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
             <span className="narrate-ico">{narration.loading ? '…' : narration.narrating ? '⏸' : '▶'}</span>
             {narration.narrating ? 'Narrating' : 'Narrate'}
           </button>
-          <select
-            className="narrate-lang"
-            value={narration.lang}
-            onChange={(e) => changeLang(e.target.value)}
-            aria-label="Story & narration language"
+          <button
+            className="narrate-settings"
+            onClick={() => setNarrateMenu(true)}
+            aria-label="Narration language and voice"
           >
-            {NARRATION_LANGS.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.label}
-                {narration.fallback && !narration.hasVoiceForLang(l.code) ? ' (no voice)' : ''}
-              </option>
-            ))}
-          </select>
-          <select
-            className="narrate-lang narrate-voice"
-            value={narration.voice}
-            onChange={(e) => narration.setVoice(e.target.value)}
-            aria-label="Narration voice"
-          >
-            {VOICE_OPTIONS.map((v) => (
-              <option key={v.code} value={v.code}>
-                {v.label}
-              </option>
-            ))}
-          </select>
+            🌐 {narrateLangLabel} · {narrateVoiceLabel}
+          </button>
           {textLang && !translations[textLang] && <span className="narrate-note">Translating…</span>}
           {narration.note && <span className="narrate-note">{narration.note}</span>}
+        </div>
+      )}
+
+      {narrateMenu && (
+        <div className="share-sheet-backdrop" onClick={() => setNarrateMenu(false)}>
+          <div className="share-sheet narrate-sheet" role="menu" onClick={(e) => e.stopPropagation()}>
+            <div className="share-sheet-title">Language</div>
+            <div className="narrate-opts">
+              {NARRATION_LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  className={`narrate-opt ${narration.lang === l.code ? 'sel' : ''}`}
+                  onClick={() => changeLang(l.code)}
+                >
+                  {l.label}
+                  {narration.fallback && !narration.hasVoiceForLang(l.code) ? ' · no voice' : ''}
+                </button>
+              ))}
+            </div>
+            <div className="share-sheet-title">Voice</div>
+            <div className="narrate-opts">
+              {VOICE_OPTIONS.map((v) => (
+                <button
+                  key={v.code}
+                  className={`narrate-opt ${narration.voice === v.code ? 'sel' : ''}`}
+                  onClick={() => narration.setVoice(v.code)}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+            <button className="share-sheet-close" onClick={() => setNarrateMenu(false)}>
+              Done
+            </button>
+          </div>
         </div>
       )}
 
