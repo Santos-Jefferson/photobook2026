@@ -5,7 +5,7 @@ import { readPhotoMeta, summarizePhotoMeta } from '../metadata'
 
 let uid = 0
 
-export default function Creator({ onGenerate, error, buildPayload }) {
+export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, onOpenMemories }) {
   const [photos, setPhotos] = useState([]) // { id, file, url }
   const [title, setTitle] = useState('')
   const [context, setContext] = useState('')
@@ -117,6 +117,14 @@ export default function Creator({ onGenerate, error, buildPayload }) {
   return (
     <div className="creator">
       <header className="creator-head">
+        <div className="creator-nav">
+          <button type="button" className="nav-link" onClick={onOpenMemories}>
+            ✨ Memories
+          </button>
+          <button type="button" className="nav-link" onClick={onOpenSaved}>
+            📚 Saved
+          </button>
+        </div>
         <h1>
           <span className="logo-dot" /> Photobook
         </h1>
@@ -318,17 +326,11 @@ export default function Creator({ onGenerate, error, buildPayload }) {
         )}
       </section>
 
-      {/* Future Capsyl / Memories integration — pull photos straight from a
-          user's Memories instead of uploading. Disabled placeholder for now. */}
-      <button
-        type="button"
-        className="memories-btn"
-        disabled
-        title="Coming soon — pull photos straight from your Capsyl Memories"
-      >
+      {/* Pull photos from a Capsyl-style Memory instead of uploading. */}
+      <button type="button" className="memories-cta" onClick={onOpenMemories}>
         <span aria-hidden="true">✨</span>
-        Generate from Memories
-        <span className="soon-badge">Coming soon</span>
+        Start from a Memory
+        <span className="memories-cta-sub">Browse example memories</span>
       </button>
 
       <button className="cta" disabled={!canSubmit} onClick={submit}>

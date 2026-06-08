@@ -4,9 +4,10 @@ import { downloadStoryHtml } from '../share'
 import { downloadStoryPdf, shareToWhatsApp, shareToInstagram } from '../export'
 import { useNarration, NARRATION_LANGS, VOICE_OPTIONS } from '../narration'
 import { translateBook } from '../translateClient'
+import { saveBook } from '../bookStorage'
 import PhotoChat from './PhotoChat'
 
-export default function StoryViewer({ book, onExit }) {
+export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
   // Local, editable copy so photo-chat edits update the story live (and flow
   // into narration + the HTML export).
   const [liveBook, setLiveBook] = useState(book)
@@ -22,6 +23,33 @@ export default function StoryViewer({ book, onExit }) {
   const [translations, setTranslations] = useState({}) // lang -> translated book
   const [sharing, setSharing] = useState(false) // an export/share is in progress
   const [shareMenu, setShareMenu] = useState(false) // export options popover open
+  const [saveState, setSaveState] = useState('') // '' | saving | saved | error
+  const currentId = useRef(savedId) // the saved-library id this book maps to
+
+  useEffect(() => {
+    currentId.current = savedId
+  }, [savedId])
+
+  // Persist the live (edited, source-language) book to the local library. Edits
+  // re-arm the button so the user can re-save the latest version.
+  async function saveToLibrary() {
+    if (saveState === 'saving') return
+    setSaveState('saving')
+    try {
+      const id = await saveBook(liveBook, currentId.current)
+      currentId.current = id
+      onSaved && onSaved(id)
+      setSaveState('saved')
+    } catch (e) {
+      console.error('[Photobook] save failed:', e)
+      setSaveState('error')
+    }
+  }
+
+  // Editing the book means the saved copy is now stale — re-arm "Save".
+  useEffect(() => {
+    setSaveState((s) => (s === 'saved' ? '' : s))
+  }, [liveBook])
 
   // A new generated book resets the viewer.
   useEffect(() => {
@@ -185,6 +213,22 @@ export default function StoryViewer({ book, onExit }) {
         ×
       </button>
       <button
+        className={`viewer-save ${saveState === 'saved' ? 'is-saved' : ''}`}
+        aria-label="Save to library"
+        onClick={saveToLibrary}
+        disabled={saveState === 'saving'}
+      >
+        {saveState === 'saving'
+          ? '… Saving'
+          : saveState === 'saved'
+            ? '✓ Saved'
+            : saveState === 'error'
+              ? '⚠ Retry save'
+              : currentId.current
+                ? '♥ Update'
+                : '♡ Save'}
+      </button>
+      <button
         className="viewer-share"
         aria-label="Share & export"
         aria-haspopup="true"
@@ -307,6 +351,19 @@ export default function StoryViewer({ book, onExit }) {
 
       {slide.type === 'closing' && (
         <div className="closing-actions">
+          <button
+            className={`restart restart-save ${saveState === 'saved' ? 'is-saved' : ''}`}
+            onClick={saveToLibrary}
+            disabled={saveState === 'saving'}
+          >
+            {saveState === 'saving'
+              ? '… Saving'
+              : saveState === 'saved'
+                ? '✓ Saved to library'
+                : currentId.current
+                  ? '♥ Update saved copy'
+                  : '♡ Save to library'}
+          </button>
           <button className="restart restart-share" onClick={() => setShareMenu(true)} disabled={sharing}>
             {sharing ? '… Preparing' : '⤓ Share & export'}
           </button>
@@ -323,6 +380,21 @@ function Slide({ slide, revealed, collageImages }) {
   const hasCollage = Array.isArray(collageImages) && collageImages.length > 0
 
   if (slide.type === 'opening') {
+    // A memory-generated book carries a baked Capsyl-style cover (title + date
+    // over the lead photo); show it full-bleed with the opening line over a scrim.
+    if (slide.cover) {
+      return (
+        <div className={`slide slide-cover ${revealed ? 'in' : ''}`}>
+          <img className="slide-cover-img" src={slide.cover} alt="" />
+          <div className="slide-cover-scrim" />
+          <div className="slide-cover-text">
+            {slide.vibe && <span className="kicker">{slide.vibe}</span>}
+            <p className="cover-body">{slide.text}</p>
+            <span className="swipe-hint">swipe to begin →</span>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className={`slide slide-text slide-opening ${hasCollage ? 'has-collage' : ''} ${revealed ? 'in' : ''}`}>
         <div className="slide-text-inner">

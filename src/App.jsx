@@ -1,20 +1,26 @@
 import { useState } from 'react'
 import Creator from './components/Creator'
 import StoryViewer from './components/StoryViewer'
+import SavedBooks from './components/SavedBooks'
+import Memories from './components/Memories'
 import Loader from './components/Loader'
 import ErrorBoundary from './components/ErrorBoundary'
-import { generatePhotoBook, buildPayload, buildDemoResponse } from './api'
+import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase64, getApiUrl } from './api'
 import { normalizeBook } from './book'
 import { rewriteBookPerspective } from './perspectiveClient'
+import { VIBES, STYLES, PERSPECTIVES } from './config'
+import { buildMemoryFiles, bakeMemoryCover } from './demoMemory'
 
 export default function App() {
-  const [view, setView] = useState('create') // create | loading | story | error
+  const [view, setView] = useState('create') // create | loading | story | saved | error
   const [book, setBook] = useState(null)
+  const [savedId, setSavedId] = useState('') // id of the saved record this book maps to
   const [error, setError] = useState('')
 
-  async function handleGenerate({ payload, previewDataUrls, demo }) {
+  async function handleGenerate({ payload, previewDataUrls, demo, cover }) {
     setView('loading')
     setError('')
+    setSavedId('') // a freshly generated book isn't saved yet
     try {
       const raw = demo
         ? await fakeDelay(buildDemoResponse(payload, previewDataUrls), 1400)
@@ -60,6 +66,9 @@ export default function App() {
       // neutral "AI Storyteller"; falls back to the original on any failure).
       const finalBook = await rewriteBookPerspective(result, payload?.perspective)
 
+      // Carry a Capsyl-style cover into the book (opening slide + saved thumbnail).
+      if (cover) finalBook.__cover = cover
+
       setBook(finalBook)
       setView('story')
     } catch (err) {
@@ -71,16 +80,56 @@ export default function App() {
 
   function reset() {
     setBook(null)
+    setSavedId('')
     setError('')
     setView('create')
   }
 
+  function openSaved(savedBook, id) {
+    setBook(savedBook)
+    setSavedId(id)
+    setView('story')
+  }
+
+  // Generate a photobook straight from an example memory: build its photos, then
+  // run the normal generation flow with a baked Capsyl-style cover.
+  async function generateFromMemory(memory) {
+    setView('loading')
+    setError('')
+    try {
+      const files = await buildMemoryFiles(memory)
+      const photosBase64 = await Promise.all(files.map(fileToOrientedBase64))
+      const previewDataUrls = photosBase64.map((b) => 'data:image/jpeg;base64,' + b)
+      const payload = buildPayload({
+        photosBase64,
+        vibe: memory.vibe || VIBES[0],
+        stylizeImages: true,
+        style: STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0],
+        title: memory.title,
+        context: memory.context,
+        perspective: PERSPECTIVES[0].code,
+      })
+      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl(), cover: bakeMemoryCover(memory) })
+    } catch (err) {
+      setError(err.message || String(err))
+      setView('error')
+    }
+  }
+
   if (view === 'loading') return <Loader />
+
+  if (view === 'saved') {
+    return <SavedBooks onOpen={openSaved} onBack={() => setView('create')} />
+  }
+
+  if (view === 'memories') {
+    return <Memories onCreate={generateFromMemory} onBack={() => setView('create')} />
+  }
 
   if (view === 'story' && book) {
     return (
       <ErrorBoundary onReset={reset}>
-        <StoryViewer book={book} onExit={reset} />
+        <StoryViewer book={book} onExit={reset} savedId={savedId} onSaved={setSavedId} />
       </ErrorBoundary>
     )
   }
@@ -90,6 +139,8 @@ export default function App() {
       onGenerate={handleGenerate}
       error={view === 'error' ? error : ''}
       buildPayload={buildPayload}
+      onOpenSaved={() => setView('saved')}
+      onOpenMemories={() => setView('memories')}
     />
   )
 }

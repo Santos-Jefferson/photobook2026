@@ -73,6 +73,7 @@ export function buildSlides(book) {
     title: safe.title,
     text: safe.opening,
     vibe: safe.vibe,
+    cover: safe.__cover, // Capsyl-style baked cover, when generated from a memory
   })
 
   // Be defensive: the API might hand back `pages` as something other than an
