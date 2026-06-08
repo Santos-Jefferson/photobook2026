@@ -17,6 +17,14 @@ export const NARRATION_LANGS = [
   { code: 'kn', label: 'ಕನ್ನಡ', bcp: 'kn-IN' },
 ]
 
+// Narration voice persona. Edge has a native child voice only for English; for
+// other languages the server raises the female voice's pitch (see lib/narrate).
+export const VOICE_OPTIONS = [
+  { code: 'female', label: 'Female' },
+  { code: 'male', label: 'Male' },
+  { code: 'child', label: 'Child' },
+]
+
 const NARRATE_ENDPOINT = '/api/narrate'
 
 const bcpFor = (code) => (NARRATION_LANGS.find((l) => l.code === code) || {}).bcp || 'en-US'
@@ -33,11 +41,11 @@ export function narrationTextForSlide(slide) {
 // embedded directly in the standalone share export (which runs offline, with no
 // server to call). `translate` is false here because the share text is already
 // in the chosen display language — the endpoint only needs `lang` for the voice.
-export async function fetchAudioDataUri(text, code) {
+export async function fetchAudioDataUri(text, code, gender = 'female') {
   const res = await fetch(NARRATE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, lang: code, translate: false }),
+    body: JSON.stringify({ text, lang: code, gender, translate: false }),
   })
   if (!res.ok) throw new Error('narrate ' + res.status)
   const blob = await res.blob()
@@ -57,6 +65,7 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
 
   const [narrating, setNarrating] = useState(false)
   const [lang, setLang] = useState('en')
+  const [voice, setVoice] = useState('female') // female | male | child
   const [loading, setLoading] = useState(false)
   const [fallback, setFallback] = useState(false) // true once we switch to browser voice
   const [note, setNote] = useState('') // why we fell back (shown in the UI)
@@ -118,13 +127,13 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
   )
 
   async function fetchAudioUrl(text, code) {
-    const key = code + '::' + index + '::' + text
+    const key = code + '::' + voice + '::' + index + '::' + text
     const cache = cacheRef.current
     if (cache.has(key)) return cache.get(key)
     const res = await fetch(NARRATE_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang: code, translate: translateAudio }),
+      body: JSON.stringify({ text, lang: code, gender: voice, translate: translateAudio }),
     })
     if (!res.ok) {
       const e = new Error('narrate ' + res.status)
@@ -220,7 +229,7 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
       }
       if (synth) synth.cancel()
     }
-  }, [narrating, index, lang, canAudio, slides, setIndex, pickVoice, synth, translateAudio])
+  }, [narrating, index, lang, voice, canAudio, slides, setIndex, pickVoice, synth, translateAudio])
 
   // Clean up on unmount.
   useEffect(
@@ -266,5 +275,17 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
     [unlockAudio],
   )
 
-  return { supported, narrating, loading, fallback, note, toggle, lang, setLang: changeLang, hasVoiceForLang }
+  return {
+    supported,
+    narrating,
+    loading,
+    fallback,
+    note,
+    toggle,
+    lang,
+    setLang: changeLang,
+    voice,
+    setVoice,
+    hasVoiceForLang,
+  }
 }

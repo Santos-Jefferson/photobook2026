@@ -110,6 +110,7 @@ const server = http.createServer(async (req, res) => {
       const audio = await getNarrationAudio({
         text: body.text,
         lang: body.lang,
+        gender: body.gender,
         shouldTranslate: body.translate !== false,
       })
       res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=86400' })

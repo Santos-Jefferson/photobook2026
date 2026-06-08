@@ -311,23 +311,24 @@ function slugify(s) {
 // Pre-generate narration audio for each slide in `lang`, returned as an array
 // of base64 data URIs aligned to the slides (null where there's no narration or
 // generation fails — the export degrades gracefully without that clip).
-export async function collectNarrationAudio(book, lang = 'en') {
+export async function collectNarrationAudio(book, lang = 'en', gender = 'female') {
   const slides = buildSlides(book)
   return Promise.all(
     slides.map((s) => {
       const text = narrationTextForSlide(s)
       if (!text) return null
-      return fetchAudioDataUri(text, lang).catch(() => null)
+      return fetchAudioDataUri(text, lang, gender).catch(() => null)
     }),
   )
 }
 
-// Generate the file and trigger a download in the browser. `lang` is the
-// current display/narration language; its audio is embedded for offline play.
-export async function downloadStoryHtml(book, lang = 'en') {
+// Generate the file and trigger a download in the browser. `lang` is the current
+// display/narration language and `gender` the voice; the audio is embedded for
+// offline play.
+export async function downloadStoryHtml(book, lang = 'en', gender = 'female') {
   let audio = null
   try {
-    audio = await collectNarrationAudio(book, lang)
+    audio = await collectNarrationAudio(book, lang, gender)
   } catch {
     audio = null // network/endpoint unavailable — export silently without audio
   }

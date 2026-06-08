@@ -26,6 +26,7 @@ export default async function handler(req, res) {
     const audio = await getNarrationAudio({
       text: body.text,
       lang: body.lang,
+      gender: body.gender,
       shouldTranslate: body.translate !== false,
     })
     res.setHeader('Content-Type', 'audio/mpeg')

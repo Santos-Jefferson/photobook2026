@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
 import { downloadStoryHtml } from '../share'
-import { useNarration, NARRATION_LANGS } from '../narration'
+import { useNarration, NARRATION_LANGS, VOICE_OPTIONS } from '../narration'
 import { translateBook } from '../translateClient'
 import PhotoChat from './PhotoChat'
 
@@ -73,7 +73,7 @@ export default function StoryViewer({ book, onExit }) {
     if (sharing) return
     setSharing(true)
     try {
-      await downloadStoryHtml(displayBook, textLang || 'en')
+      await downloadStoryHtml(displayBook, textLang || 'en', narration.voice)
     } finally {
       setSharing(false)
     }
@@ -200,6 +200,18 @@ export default function StoryViewer({ book, onExit }) {
               <option key={l.code} value={l.code}>
                 {l.label}
                 {narration.fallback && !narration.hasVoiceForLang(l.code) ? ' (no voice)' : ''}
+              </option>
+            ))}
+          </select>
+          <select
+            className="narrate-lang narrate-voice"
+            value={narration.voice}
+            onChange={(e) => narration.setVoice(e.target.value)}
+            aria-label="Narration voice"
+          >
+            {VOICE_OPTIONS.map((v) => (
+              <option key={v.code} value={v.code}>
+                {v.label}
               </option>
             ))}
           </select>
