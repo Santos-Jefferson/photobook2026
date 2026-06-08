@@ -36,7 +36,7 @@ ingress:
 # by default (in-cluster, no auth) and falls back to Google if unreachable —
 # nothing required. Override the endpoint/model or neural voices here if needed.
 env: {}
-  # TRANSLATE_API_URL: https://docinsights.use.eks.mcap.sip.dev.cloud.synchronoss.net/v1
+  # TRANSLATE_API_URL: https://docinsightsgpu.use.eks.mcap.sip.dev.cloud.synchronoss.net/v1
   # TRANSLATE_MODEL: qwen3
   # EDGE_VOICE_PT: pt-BR-AntonioNeural
   # EDGE_VOICE_JA: ja-JP-KeitaNeural
