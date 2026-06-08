@@ -69,3 +69,33 @@ export function askPhoto({ photo, question, imageType }) {
     ...(imageType ? { image_type: imageType } : {}),
   })
 }
+
+// Generate a personalized greeting card from this memory. With a photo, the
+// response also includes a holiday-styled `styled_image_b64`.
+export function generateGreetingCard({ holiday, tone, photo, recipient, context }) {
+  return post('/greeting-card', {
+    holiday,
+    ...(tone ? { tone } : {}),
+    ...(photo ? { photo: toApiPhoto(photo) } : {}),
+    ...(recipient ? { recipient } : {}),
+    ...(context ? { context } : {}),
+  })
+}
+
+// A curated subset of the API's holiday keys (label shown in the picker).
+export const HOLIDAYS = [
+  { key: 'christmas', label: 'Christmas' },
+  { key: 'new_years_day', label: "New Year's Day" },
+  { key: 'valentines_day', label: "Valentine's Day" },
+  { key: 'mothers_day', label: "Mother's Day" },
+  { key: 'fathers_day', label: "Father's Day" },
+  { key: 'thanksgiving', label: 'Thanksgiving' },
+  { key: 'halloween', label: 'Halloween' },
+  { key: 'easter', label: 'Easter' },
+  { key: 'independence_day_250', label: '250th Independence Day' },
+  { key: 'lunar_new_year', label: 'Lunar New Year' },
+  { key: 'eid_al_fitr', label: 'Eid al-Fitr' },
+  { key: 'hanukkah', label: 'Hanukkah' },
+]
+
+export const CARD_TONES = ['heartwarming', 'funny', 'poetic', 'patriotic', 'spiritual', 'formal']

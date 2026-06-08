@@ -293,6 +293,9 @@ export default function StoryViewer({ book, onExit }) {
           <PhotoChat
             key={pageIndex}
             photo={slide.image}
+            caption={slide.caption}
+            narrative={slide.narrative}
+            storyContext={displayBook?.opening || displayBook?.context || ''}
             canRevert={canRevert}
             onRevert={revertPhoto}
             onApplyImage={applyImage}
