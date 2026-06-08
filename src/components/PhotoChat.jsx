@@ -56,15 +56,36 @@ export default function PhotoChat({ photo, canRevert, onRevert, onApplyImage, on
         imageType,
       })
       if (r.action_type === 'style' || r.action_type === 'edit') {
+        // The styled photo is the feedback — don't echo a "style applied" prompt.
         if (r.result_image_b64) onApplyImage(r.result_image_b64, r.style_applied)
-        const label = r.style_applied ? ` (${String(r.style_applied).replace(/_/g, ' ')})` : ''
-        setThread((t) => [...t, { role: 'assistant', text: `✓ ${r.action_type} applied${label}.` }])
       } else {
         setThread((t) => [...t, { role: 'assistant', text: r.text_response || '(no response)', applyable: true }])
       }
     } catch (e) {
       setErr(e.message || String(e))
       setThread((t) => [...t, { role: 'assistant', text: '⚠ ' + (e.message || String(e)), error: true }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Apply just the selected style preset — no message required, and nothing is
+  // added to the chat thread (the restyled photo is the feedback).
+  async function applyStyle() {
+    if (busy) return
+    setErr('')
+    setBusy(true)
+    try {
+      const r = await sendPhotoMessage({
+        photo: photoRef.current,
+        message: `Apply the ${style.replace(/_/g, ' ')} style`,
+        selectedStyle: style,
+        imageType,
+      })
+      if (r.result_image_b64) onApplyImage(r.result_image_b64, r.style_applied || style)
+      else if (r.text_response) setErr(r.text_response)
+    } catch (e) {
+      setErr(e.message || String(e))
     } finally {
       setBusy(false)
     }
@@ -134,7 +155,7 @@ export default function PhotoChat({ photo, canRevert, onRevert, onApplyImage, on
           className="chat-style"
           value={style}
           onChange={(e) => setStyle(e.target.value)}
-          title="Fallback style when you ask for a style without naming one"
+          title="Pick a style preset, then Apply — or name a style in your message"
         >
           {STYLES.map((s) => (
             <option key={s} value={s}>
@@ -142,6 +163,14 @@ export default function PhotoChat({ photo, canRevert, onRevert, onApplyImage, on
             </option>
           ))}
         </select>
+        <button
+          className="chat-apply-style"
+          disabled={busy}
+          onClick={applyStyle}
+          title="Apply the selected style preset to this photo"
+        >
+          Apply
+        </button>
         <input
           type="text"
           value={input}
