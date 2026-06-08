@@ -1782,3 +1782,158 @@ button {
   cursor: pointer;
   box-shadow: var(--shadow-soft);
 }
+
+/* ============================================================
+   Capsyl-style bottom navigation (mobile only)
+   ============================================================ */
+.bottom-nav {
+  display: none;
+}
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 9px 0 8px;
+  cursor: pointer;
+  color: #aeb9cb;
+  font-family: inherit;
+}
+.bottom-nav-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.bottom-nav-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+.bottom-nav-item.active {
+  color: #fff;
+}
+.bottom-nav-item.active .bottom-nav-label {
+  color: #00c9e8;
+}
+.bottom-nav-item.active .bottom-nav-icon {
+  filter: drop-shadow(0 0 7px rgba(0, 201, 232, 0.85));
+}
+
+@media (max-width: 760px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    background: #232c3a;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.22);
+  }
+  /* Lift the primary CTA above the bottom nav so it's always visible. */
+  .cta {
+    bottom: calc(74px + env(safe-area-inset-bottom));
+  }
+  .memories-cta {
+    margin-bottom: calc(150px + env(safe-area-inset-bottom));
+  }
+  /* Room above the nav for the gallery / library / detail pages. */
+  .memories,
+  .memory-detail,
+  .saved {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ============================================================
+   New memory + user memory cards
+   ============================================================ */
+.memory-new {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: color-mix(in srgb, #0096d5 7%, #fff);
+  border: 1.5px dashed #0096d5;
+  color: #0a6f9e;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: none;
+}
+.memory-new-plus {
+  font-size: 36px;
+  line-height: 1;
+}
+.memory-mine-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #0096d5;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.memory-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 50%;
+  font-size: 13px;
+}
+.memory-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-family: inherit;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+.memory-thumbs.new {
+  grid-template-columns: repeat(4, 1fr);
+}
+.memory-new-thumb {
+  position: relative;
+}
+.memory-new-thumb img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.memory-new-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: #16202c;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.memory-new-add {
+  aspect-ratio: 1;
+  border: 1.5px dashed var(--line);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  font-size: 24px;
+  color: var(--muted);
+  cursor: pointer;
+}

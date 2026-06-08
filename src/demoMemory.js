@@ -108,6 +108,45 @@ export function bakeMemoryCover(memory) {
   return c.toDataURL('image/jpeg', 0.9)
 }
 
+// A baked Capsyl-style cover from a user photo: the photo + dark gradient + the
+// title in a display font. Returns a data URL (async — waits for the image).
+export function bakeCoverFromImage(title, src) {
+  return new Promise((resolve) => {
+    const c = newCanvas()
+    const ctx = c.getContext('2d')
+    const finish = () => {
+      const g = ctx.createLinearGradient(0, H * 0.45, 0, H)
+      g.addColorStop(0, 'rgba(0,0,0,0)')
+      g.addColorStop(1, 'rgba(0,0,0,0.72)')
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, W, H)
+      ctx.textAlign = 'left'
+      ctx.fillStyle = '#fff'
+      const t = String(title || 'My memory')
+      const size = t.length > 18 ? 76 : 92
+      ctx.font = `800 ${size}px Georgia, 'Times New Roman', serif`
+      wrapText(ctx, t, 64, H - 90, W - 128, size * 1.04)
+      resolve(c.toDataURL('image/jpeg', 0.9))
+    }
+    const img = new Image()
+    img.onload = () => {
+      const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1)
+      let dw = W
+      let dh = H
+      if (ar > W / H) dw = H * ar
+      else dh = W / ar
+      ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh)
+      finish()
+    }
+    img.onerror = () => {
+      ctx.fillStyle = '#26345c'
+      ctx.fillRect(0, 0, W, H)
+      finish()
+    }
+    img.src = src
+  })
+}
+
 function wrapText(ctx, text, x, yBottom, maxW, lineH) {
   const words = String(text).split(' ')
   const lines = []

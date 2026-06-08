@@ -9,7 +9,8 @@ import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase6
 import { normalizeBook } from './book'
 import { rewriteBookPerspective } from './perspectiveClient'
 import { VIBES, STYLES, PERSPECTIVES } from './config'
-import { buildMemoryFiles, bakeMemoryCover } from './demoMemory'
+import { buildMemoryFiles, bakeMemoryCover, bakeCoverFromImage } from './demoMemory'
+import BottomNav from './components/BottomNav'
 
 export default function App() {
   const [view, setView] = useState('create') // create | loading | story | saved | error
@@ -97,19 +98,30 @@ export default function App() {
     setView('loading')
     setError('')
     try {
-      const files = await buildMemoryFiles(memory)
-      const photosBase64 = await Promise.all(files.map(fileToOrientedBase64))
-      const previewDataUrls = photosBase64.map((b) => 'data:image/jpeg;base64,' + b)
+      let photosBase64
+      let previewDataUrls
+      let cover
+      if (memory.isUser) {
+        // The user's own photos are stored as JPEG data URLs.
+        previewDataUrls = memory.photos
+        photosBase64 = memory.photos.map((d) => d.replace(/^data:[^,]+,/, ''))
+        cover = await bakeCoverFromImage(memory.title, memory.photos[0])
+      } else {
+        const files = await buildMemoryFiles(memory)
+        photosBase64 = await Promise.all(files.map(fileToOrientedBase64))
+        previewDataUrls = photosBase64.map((b) => 'data:image/jpeg;base64,' + b)
+        cover = bakeMemoryCover(memory)
+      }
       const payload = buildPayload({
         photosBase64,
         vibe: memory.vibe || VIBES[0],
         stylizeImages: true,
         style: STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0],
         title: memory.title,
-        context: memory.context,
+        context: memory.context || '',
         perspective: PERSPECTIVES[0].code,
       })
-      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl(), cover: bakeMemoryCover(memory) })
+      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl(), cover })
     } catch (err) {
       setError(err.message || String(err))
       setView('error')
@@ -119,11 +131,21 @@ export default function App() {
   if (view === 'loading') return <Loader />
 
   if (view === 'saved') {
-    return <SavedBooks onOpen={openSaved} onBack={() => setView('create')} />
+    return (
+      <>
+        <SavedBooks onOpen={openSaved} onBack={() => setView('create')} />
+        <BottomNav active="saved" onNavigate={setView} />
+      </>
+    )
   }
 
   if (view === 'memories') {
-    return <Memories onCreate={generateFromMemory} onBack={() => setView('create')} />
+    return (
+      <>
+        <Memories onCreate={generateFromMemory} onBack={() => setView('create')} />
+        <BottomNav active="memories" onNavigate={setView} />
+      </>
+    )
   }
 
   if (view === 'story' && book) {
@@ -135,13 +157,16 @@ export default function App() {
   }
 
   return (
-    <Creator
-      onGenerate={handleGenerate}
-      error={view === 'error' ? error : ''}
-      buildPayload={buildPayload}
-      onOpenSaved={() => setView('saved')}
-      onOpenMemories={() => setView('memories')}
-    />
+    <>
+      <Creator
+        onGenerate={handleGenerate}
+        error={view === 'error' ? error : ''}
+        buildPayload={buildPayload}
+        onOpenSaved={() => setView('saved')}
+        onOpenMemories={() => setView('memories')}
+      />
+      <BottomNav active="create" onNavigate={setView} />
+    </>
   )
 }
 
