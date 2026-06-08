@@ -39,3 +39,13 @@ export const STYLES = [
 ]
 
 export const MAX_PHOTOS = 5
+
+// Narrator perspective for the story. `ai` is the neutral default (no rewrite);
+// the others retell the captions/narration in that voice via the LLM.
+export const PERSPECTIVES = [
+  { code: 'ai', label: 'AI Storyteller' },
+  { code: 'me', label: 'My Perspective' },
+  { code: 'child', label: 'Child Perspective' },
+  { code: 'friend', label: 'Friend Perspective' },
+  { code: 'parent', label: 'Parent Perspective' },
+]

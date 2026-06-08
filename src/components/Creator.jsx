@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { VIBES, STYLES, MAX_PHOTOS, DEFAULT_API_URL } from '../config'
+import { VIBES, STYLES, MAX_PHOTOS, DEFAULT_API_URL, PERSPECTIVES } from '../config'
 import { fileToOrientedBase64, getApiUrl, setApiUrl, getApiKey, setApiKey } from '../api'
 import { readPhotoMeta, summarizePhotoMeta } from '../metadata'
 
@@ -10,6 +10,7 @@ export default function Creator({ onGenerate, error, buildPayload }) {
   const [title, setTitle] = useState('')
   const [context, setContext] = useState('')
   const [vibe, setVibe] = useState(VIBES[0])
+  const [perspective, setPerspective] = useState(PERSPECTIVES[0].code)
   const [style, setStyle] = useState(STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0])
   const [stylize, setStylize] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -103,6 +104,7 @@ export default function Creator({ onGenerate, error, buildPayload }) {
         style,
         title: title.trim(),
         context: fullContext,
+        perspective,
       })
       await onGenerate({ payload, previewDataUrls, demo })
     } finally {
@@ -257,6 +259,17 @@ export default function Creator({ onGenerate, error, buildPayload }) {
             </select>
           </label>
         </div>
+
+        <label className="field">
+          <span>Narrator perspective</span>
+          <select value={perspective} onChange={(e) => setPerspective(e.target.value)}>
+            {PERSPECTIVES.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="toggle">
           <input type="checkbox" checked={stylize} onChange={(e) => setStylize(e.target.checked)} />

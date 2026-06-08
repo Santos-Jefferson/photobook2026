@@ -5,6 +5,7 @@ import Loader from './components/Loader'
 import ErrorBoundary from './components/ErrorBoundary'
 import { generatePhotoBook, buildPayload, buildDemoResponse } from './api'
 import { normalizeBook } from './book'
+import { rewriteBookPerspective } from './perspectiveClient'
 
 export default function App() {
   const [view, setView] = useState('create') // create | loading | story | error
@@ -55,7 +56,11 @@ export default function App() {
         return
       }
 
-      setBook(result)
+      // Retell the story in the chosen narrator perspective (no-op for the
+      // neutral "AI Storyteller"; falls back to the original on any failure).
+      const finalBook = await rewriteBookPerspective(result, payload?.perspective)
+
+      setBook(finalBook)
       setView('story')
     } catch (err) {
       console.error('[Photobook] generate failed:', err)

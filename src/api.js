@@ -70,8 +70,10 @@ export async function fileToOrientedBase64(file, maxDim = 1536) {
   }
 }
 
-// Build the request body in the exact shape the server expects.
-export function buildPayload({ photosBase64, vibe, stylizeImages, style, title, context }) {
+// Build the request body in the exact shape the server expects. `perspective`
+// is carried for the client-side POV rewrite (and forwarded in case the API
+// later honors it); it doesn't affect the documented fields above.
+export function buildPayload({ photosBase64, vibe, stylizeImages, style, title, context, perspective }) {
   return {
     photos: photosBase64.map((photo) => ({ photo })),
     vibe,
@@ -79,6 +81,7 @@ export function buildPayload({ photosBase64, vibe, stylizeImages, style, title, 
     style,
     title,
     context,
+    perspective: perspective || 'ai',
   }
 }
 

@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setGlobalDispatcher, ProxyAgent } from 'undici'
-import { getNarrationAudio, translateMany } from '../lib/narrate.js'
+import { getNarrationAudio, translateMany, rewritePerspective } from '../lib/narrate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -131,6 +131,24 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await readJsonBody(req)
       const texts = await translateMany(body.texts, body.target || 'en')
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ texts }))
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: String(e && e.message ? e.message : e) }))
+    }
+    return
+  }
+
+  // --- narrator perspective rewrite (batch) ---
+  if (url.pathname === '/api/perspective') {
+    if (req.method !== 'POST') {
+      res.writeHead(405).end('Method not allowed')
+      return
+    }
+    try {
+      const body = await readJsonBody(req)
+      const texts = await rewritePerspective(body.texts, body.perspective)
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ texts }))
     } catch (e) {
