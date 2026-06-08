@@ -31,6 +31,7 @@ endif
 
 LOCAL_IMAGE  := $(APP_NAME):$(IMAGE_TAG)
 REMOTE_IMAGE := $(ECR_REPO):$(IMAGE_TAG)
+LATEST_IMAGE := $(ECR_REPO):latest
 
 # Optional: bake the photobook API endpoint/key into the client bundle at build
 # time. Leave empty to use the defaults in src/config.js.
@@ -46,7 +47,7 @@ HELM_PKG_FILE  := $(HELM_PKG_DIR)/$(HELM_NAME)-$(HELM_VERSION).tgz
 HELM_OCI_URI   := oci://$(ECR_HOST)/$(ECR_NAMESPACE)/helm
 
 ##############################################################################
-.PHONY: all all_ecr all_helm build tag-ecr push-ecr \
+.PHONY: all all_ecr all_helm build tag-ecr push-ecr push-latest ship \
         helm-package helm-push ecr-login \
         bump bump-patch bump-minor bump-helm-patch bump-helm-minor \
         show-config clean
@@ -77,6 +78,17 @@ tag-ecr:
 push-ecr: ecr-login tag-ecr
 	@echo "==> Pushing $(REMOTE_IMAGE)"
 	$(docker) --context rootless --config $${bamboo_build_working_directory}/.docker push $(REMOTE_IMAGE)
+
+# Also publish a mutable :latest so deploys don't need a per-build tag. Pair with
+# image.pullPolicy=Always (values-prod) + `kubectl rollout restart` to pull it.
+push-latest: ecr-login
+	@echo "==> Tagging + pushing $(LATEST_IMAGE)"
+	$(docker) tag $(LOCAL_IMAGE) $(LATEST_IMAGE)
+	$(docker) --context rootless --config $${bamboo_build_working_directory}/.docker push $(LATEST_IMAGE)
+
+# One-shot: build + push the immutable sha tag (for rollback) AND :latest.
+ship: build push-ecr push-latest
+	@echo "==> Shipped $(REMOTE_IMAGE) and $(LATEST_IMAGE)"
 
 ecr-login:
 	@echo "==> Logging in to ECR ($(ECR_HOST))"

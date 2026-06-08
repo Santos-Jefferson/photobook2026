@@ -8,7 +8,12 @@
 
 image:
   repository: 096016688168.dkr.ecr.us-east-1.amazonaws.com/sncr/bda/ml/photobook-snapshots
-  tag: snapshot-1.0.0-e9b50e2
+  # Mutable "latest" tag so you don't edit the tag on every deploy. Because the
+  # tag is mutable, pullPolicy must be Always and you trigger the pull with a
+  # `kubectl rollout restart` after pushing a new image. To pin/rollback to an
+  # exact build, override with --set image.tag=snapshot-1.0.0-<sha>.
+  tag: latest
+  pullPolicy: Always
 
 ingress:
   enabled: true
