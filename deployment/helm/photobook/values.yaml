@@ -32,10 +32,20 @@ ingress:
     #   hosts:
     #     - photobook.example.com
 
-# Extra runtime env vars. No secrets are needed at runtime (narration uses the
-# free Edge voices; translation is key-less). Use these to override voices, or
-# to set an outbound proxy if your cluster has no direct internet egress.
+# Server-side secrets. Rendered into a Kubernetes Secret and mounted as env
+# (never baked into the public client bundle). Provide at deploy time from a CI
+# variable rather than committing it here, e.g.:
+#   helm upgrade ... --set-string secrets.anthropicApiKey="$bamboo_ANTHROPIC_API_KEY"
+# When set, translation/narration use natural Claude localization; when empty,
+# they fall back to the key-less Google endpoint.
+secrets:
+  anthropicApiKey: ""
+
+# Extra non-secret runtime env vars. Use these to override neural voices, pick a
+# translation model, or set an outbound proxy if your cluster has no direct
+# internet egress.
 env: {}
+  # TRANSLATE_MODEL: claude-haiku-4-5
   # EDGE_VOICE_PT: pt-BR-AntonioNeural
   # EDGE_VOICE_JA: ja-JP-KeitaNeural
   # HTTPS_PROXY: http://proxy.company.com:8080
