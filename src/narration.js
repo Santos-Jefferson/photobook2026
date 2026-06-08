@@ -14,6 +14,7 @@ export const NARRATION_LANGS = [
   { code: 'ta', label: 'தமிழ்', bcp: 'ta-IN' },
   { code: 'te', label: 'తెలుగు', bcp: 'te-IN' },
   { code: 'bn', label: 'বাংলা', bcp: 'bn-IN' },
+  { code: 'kn', label: 'ಕನ್ನಡ', bcp: 'kn-IN' },
 ]
 
 const NARRATE_ENDPOINT = '/api/narrate'
