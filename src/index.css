@@ -387,6 +387,66 @@ button {
   box-shadow: none;
 }
 
+/* Coming-soon "Generate from Memories" placeholder (Capsyl integration path) */
+.memories-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 18px 0 84px; /* room above the fixed primary CTA */
+  border: 1.5px dashed var(--line);
+  border-radius: 16px;
+  padding: 15px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-soft));
+  cursor: not-allowed;
+}
+.soon-badge {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent-2);
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+/* Original | Styled compare toggle on photo slides */
+.orig-toggle {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: inline-flex;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 22px;
+  padding: 3px;
+  backdrop-filter: blur(6px);
+}
+.orig-toggle button {
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 6px 14px;
+  border-radius: 18px;
+  cursor: pointer;
+}
+.orig-toggle button.on {
+  background: #fff;
+  color: #16202c;
+}
+
 /* ---------- Loader ---------- */
 .loader {
   height: 100%;

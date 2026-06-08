@@ -81,6 +81,8 @@ export function buildSlides(book) {
   const pages = Array.isArray(safe.pages) ? safe.pages : []
   for (const p of pages) {
     if (!p || typeof p !== 'object') continue
+    const styled = resolveImageSrc(p.styled_image_b64)
+    const original = resolveImageSrc(p.original_image)
     slides.push({
       type: 'photo',
       page: p.page,
@@ -88,7 +90,10 @@ export function buildSlides(book) {
       caption: p.caption,
       // Prefer the styled image; fall back to the original upload when the API
       // returned no styled image (e.g. stylize was off).
-      image: resolveImageSrc(p.styled_image_b64) || resolveImageSrc(p.original_image),
+      image: styled || original,
+      // Both forms kept so the viewer can offer an Original | Stylized toggle.
+      styled,
+      original,
       styleApplied: p.style_applied,
     })
   }

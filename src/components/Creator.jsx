@@ -305,6 +305,19 @@ export default function Creator({ onGenerate, error, buildPayload }) {
         )}
       </section>
 
+      {/* Future Capsyl / Memories integration — pull photos straight from a
+          user's Memories instead of uploading. Disabled placeholder for now. */}
+      <button
+        type="button"
+        className="memories-btn"
+        disabled
+        title="Coming soon — pull photos straight from your Capsyl Memories"
+      >
+        <span aria-hidden="true">✨</span>
+        Generate from Memories
+        <span className="soon-badge">Coming soon</span>
+      </button>
+
       <button className="cta" disabled={!canSubmit} onClick={submit}>
         {busy ? 'Working…' : photos.length ? `Make my photo book (${photos.length})` : 'Add photos to begin'}
       </button>

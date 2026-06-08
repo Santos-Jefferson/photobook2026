@@ -319,7 +319,15 @@ function CoverCollage({ images }) {
 
 function PhotoSlide({ slide, revealed }) {
   const [imgError, setImgError] = useState(false)
-  const hasImage = slide.image && !imgError
+  const [showOriginal, setShowOriginal] = useState(false)
+
+  // Offer the toggle only when we actually have a distinct original + styled.
+  const canToggle = !!slide.styled && !!slide.original && slide.styled !== slide.original
+  // Reset to the styled view whenever we move to a different photo.
+  useEffect(() => setShowOriginal(false), [slide.page])
+
+  const src = showOriginal && slide.original ? slide.original : slide.image
+  const hasImage = src && !imgError
 
   return (
     <div className={`slide slide-photo ${revealed ? 'in' : ''}`}>
@@ -329,10 +337,10 @@ function PhotoSlide({ slide, revealed }) {
               frame (or vice-versa) gets a soft backdrop instead of black bars,
               while the foreground shows the whole photo at its true aspect
               ratio — nothing cropped, orientation preserved. */}
-          <img className="slide-img-bg" src={slide.image} alt="" aria-hidden="true" />
+          <img className="slide-img-bg" src={src} alt="" aria-hidden="true" />
           <img
             className="slide-img"
-            src={slide.image}
+            src={src}
             alt={slide.caption || `Page ${slide.page}`}
             onError={() => setImgError(true)}
           />
@@ -343,6 +351,30 @@ function PhotoSlide({ slide, revealed }) {
         </div>
       )}
       <div className="scrim" />
+      {canToggle && (
+        <div className="orig-toggle" role="group" aria-label="Compare original and styled photo">
+          <button
+            type="button"
+            className={!showOriginal ? 'on' : ''}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowOriginal(false)
+            }}
+          >
+            Styled
+          </button>
+          <button
+            type="button"
+            className={showOriginal ? 'on' : ''}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowOriginal(true)
+            }}
+          >
+            Original
+          </button>
+        </div>
+      )}
       <div className="slide-caption">
         {slide.caption && <p className="caption">{slide.caption}</p>}
         {slide.narrative && <p className="narrative">{slide.narrative}</p>}
