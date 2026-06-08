@@ -447,6 +447,77 @@ button {
   color: #16202c;
 }
 
+/* Share & export bottom sheet */
+.share-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(8, 16, 24, 0.55);
+  display: grid;
+  place-items: end center;
+  padding: 0 0 max(20px, env(safe-area-inset-bottom));
+}
+.share-sheet {
+  width: min(460px, calc(100% - 24px));
+  background: #fff;
+  border-radius: 20px;
+  padding: 12px;
+  box-shadow: 0 20px 60px rgba(11, 22, 32, 0.4);
+  animation: sheet-up 0.18s ease-out;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.share-sheet-title {
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  padding: 8px 10px 10px;
+}
+.share-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  padding: 14px 14px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.share-opt:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-soft));
+}
+.share-opt-ico {
+  font-size: 18px;
+}
+.share-sheet-close {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px;
+  cursor: pointer;
+}
+
 /* ---------- Loader ---------- */
 .loader {
   height: 100%;

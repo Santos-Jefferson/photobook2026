@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
 import { downloadStoryHtml } from '../share'
+import { downloadStoryPdf, shareToWhatsApp, shareToInstagram } from '../export'
 import { useNarration, NARRATION_LANGS, VOICE_OPTIONS } from '../narration'
 import { translateBook } from '../translateClient'
 import PhotoChat from './PhotoChat'
@@ -19,7 +20,8 @@ export default function StoryViewer({ book, onExit }) {
   // visible text is translated to it and the audio narrates that same text.
   const [textLang, setTextLang] = useState('')
   const [translations, setTranslations] = useState({}) // lang -> translated book
-  const [sharing, setSharing] = useState(false) // generating the export (audio takes a moment)
+  const [sharing, setSharing] = useState(false) // an export/share is in progress
+  const [shareMenu, setShareMenu] = useState(false) // export options popover open
 
   // A new generated book resets the viewer.
   useEffect(() => {
@@ -67,17 +69,32 @@ export default function StoryViewer({ book, onExit }) {
     setTextLang(v)
   }
 
-  // Export the on-screen story (translated text + collage) and embed narration
-  // audio for the current language so the shared .html plays offline.
-  async function share() {
+  // Run an export/share action with a shared busy state; closes the menu.
+  async function runExport(fn) {
     if (sharing) return
+    setShareMenu(false)
     setSharing(true)
     try {
-      await downloadStoryHtml(displayBook, textLang || 'en', narration.voice)
+      await fn()
+    } catch (e) {
+      console.error('[Photobook] export failed:', e)
     } finally {
       setSharing(false)
     }
   }
+
+  const exportOptions = [
+    { key: 'pdf', label: 'Download PDF', icon: '📄', run: () => downloadStoryPdf(displayBook) },
+    {
+      key: 'html',
+      // Self-contained .html (collage + offline narration in the current voice).
+      label: 'Export Photobook',
+      icon: '📖',
+      run: () => downloadStoryHtml(displayBook, textLang || 'en', narration.voice),
+    },
+    { key: 'whatsapp', label: 'Share to WhatsApp', icon: '🟢', run: () => shareToWhatsApp(displayBook) },
+    { key: 'instagram', label: 'Share to Instagram', icon: '📸', run: () => shareToInstagram(displayBook) },
+  ]
 
   // Close the editor when leaving a photo slide.
   useEffect(() => {
@@ -169,8 +186,9 @@ export default function StoryViewer({ book, onExit }) {
       </button>
       <button
         className="viewer-share"
-        aria-label="Download as HTML to share"
-        onClick={share}
+        aria-label="Share & export"
+        aria-haspopup="true"
+        onClick={() => setShareMenu(true)}
         disabled={sharing}
       >
         {sharing ? '… Preparing' : '⤓ Share'}
@@ -178,6 +196,26 @@ export default function StoryViewer({ book, onExit }) {
       <button className="viewer-debug" aria-label="Debug" onClick={() => setShowDebug((s) => !s)}>
         {'{}'}
       </button>
+
+      {/* Share & export options */}
+      {shareMenu && (
+        <div className="share-sheet-backdrop" onClick={() => setShareMenu(false)}>
+          <div className="share-sheet" role="menu" onClick={(e) => e.stopPropagation()}>
+            <div className="share-sheet-title">Share &amp; export</div>
+            {exportOptions.map((o) => (
+              <button key={o.key} className="share-opt" role="menuitem" onClick={() => runExport(o.run)}>
+                <span className="share-opt-ico" aria-hidden="true">
+                  {o.icon}
+                </span>
+                {o.label}
+              </button>
+            ))}
+            <button className="share-sheet-close" onClick={() => setShareMenu(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* narration controls */}
       {narration.supported && (
@@ -266,8 +304,8 @@ export default function StoryViewer({ book, onExit }) {
 
       {slide.type === 'closing' && (
         <div className="closing-actions">
-          <button className="restart restart-share" onClick={share} disabled={sharing}>
-            {sharing ? '… Preparing' : '⤓ Download to share'}
+          <button className="restart restart-share" onClick={() => setShareMenu(true)} disabled={sharing}>
+            {sharing ? '… Preparing' : '⤓ Share & export'}
           </button>
           <button className="restart restart-ghost" onClick={onExit}>
             Make another
