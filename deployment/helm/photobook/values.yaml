@@ -32,20 +32,12 @@ ingress:
     #   hosts:
     #     - photobook.example.com
 
-# Server-side secrets. Rendered into a Kubernetes Secret and mounted as env
-# (never baked into the public client bundle). Provide at deploy time from a CI
-# variable rather than committing it here, e.g.:
-#   helm upgrade ... --set-string secrets.anthropicApiKey="$bamboo_ANTHROPIC_API_KEY"
-# When set, translation/narration use natural Claude localization; when empty,
-# they fall back to the key-less Google endpoint.
-secrets:
-  anthropicApiKey: ""
-
-# Extra non-secret runtime env vars. Use these to override neural voices, pick a
-# translation model, or set an outbound proxy if your cluster has no direct
-# internet egress.
+# Extra runtime env vars. Translation uses the internal key-less Qwen3 endpoint
+# by default (in-cluster, no auth) and falls back to Google if unreachable —
+# nothing required. Override the endpoint/model or neural voices here if needed.
 env: {}
-  # TRANSLATE_MODEL: claude-haiku-4-5
+  # TRANSLATE_API_URL: https://docinsights.use.eks.mcap.sip.dev.cloud.synchronoss.net/v1
+  # TRANSLATE_MODEL: qwen3
   # EDGE_VOICE_PT: pt-BR-AntonioNeural
   # EDGE_VOICE_JA: ja-JP-KeitaNeural
   # HTTPS_PROXY: http://proxy.company.com:8080

@@ -37,13 +37,6 @@ spec:
           env:
             - name: PORT
               value: {{ .Values.containerPort | quote }}
-            {{- if .Values.secrets.anthropicApiKey }}
-            - name: ANTHROPIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "photobook.fullname" . }}-secrets
-                  key: ANTHROPIC_API_KEY
-            {{- end }}
             {{- range $k, $v := .Values.env }}
             - name: {{ $k }}
               value: {{ $v | quote }}
