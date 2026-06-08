@@ -174,7 +174,7 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
       synth.speak(u)
     }
 
-    if (fallback || !canAudio) {
+    if (!canAudio) {
       speakBrowser()
     } else {
       setLoading(true)
@@ -184,14 +184,27 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
           const a = audioRef.current
           a.onended = advance
           a.src = url
+          // Neural audio arrived — clear any earlier device-voice state so we
+          // keep using the neural voice from here on.
+          setFallback(false)
           setNote('')
-          return a.play()
+          const p = a.play()
+          if (p && p.catch) {
+            p.catch(() => {
+              // Audio loaded fine but the browser blocked autoplay: use the
+              // device voice for THIS slide only, and keep trying the neural
+              // voice on the next slides (don't disable it for the session).
+              if (tokenRef.current === myToken && narratingRef.current) speakBrowser()
+            })
+          }
         })
-        .catch((err) => {
-          // Backend missing or blocked: switch to the browser voice for good.
+        .catch(() => {
+          // A backend blip (e.g. a pod restarting mid-deploy): use the device
+          // voice for this slide, but retry the neural voice on the next one —
+          // a single failure must not disable it for the whole session.
           if (tokenRef.current !== myToken) return
           setFallback(true)
-          setNote('Neural voice unavailable — using device voice. (Run `npm run share`, not `npm run dev`.)')
+          setNote('Using your device voice for this part…')
           speakBrowser()
         })
         .finally(() => {
@@ -207,7 +220,7 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
       }
       if (synth) synth.cancel()
     }
-  }, [narrating, index, lang, fallback, canAudio, slides, setIndex, pickVoice, synth, translateAudio])
+  }, [narrating, index, lang, canAudio, slides, setIndex, pickVoice, synth, translateAudio])
 
   // Clean up on unmount.
   useEffect(
@@ -221,22 +234,37 @@ export function useNarration({ slides, index, setIndex, translateAudio = true })
     [synth],
   )
 
+  // Play a tiny silent clip inside a user gesture so a later async play() is
+  // allowed by the browser's autoplay policy.
+  const unlockAudio = useCallback(() => {
+    const a = audioRef.current
+    if (!a) return
+    try {
+      a.src = SILENT
+      const p = a.play()
+      if (p && p.then) p.then(() => a.pause()).catch(() => {})
+    } catch {
+      /* ignore */
+    }
+  }, [SILENT])
+
   const toggle = useCallback(() => {
     setNarrating((n) => {
       const next = !n
-      // Unlock audio within the user gesture so the later async play() works.
-      if (next && audioRef.current) {
-        try {
-          audioRef.current.src = SILENT
-          const p = audioRef.current.play()
-          if (p && p.then) p.then(() => audioRef.current && audioRef.current.pause()).catch(() => {})
-        } catch {
-          /* ignore */
-        }
-      }
+      if (next) unlockAudio() // unlock within the click gesture
       return next
     })
-  }, [SILENT])
+  }, [unlockAudio])
 
-  return { supported, narrating, loading, fallback, note, toggle, lang, setLang, hasVoiceForLang }
+  // Changing language fires from a select's onChange (a user gesture), so unlock
+  // here too — keeps the neural voice playing after a mid-narration switch.
+  const changeLang = useCallback(
+    (v) => {
+      unlockAudio()
+      setLang(v)
+    },
+    [unlockAudio],
+  )
+
+  return { supported, narrating, loading, fallback, note, toggle, lang, setLang: changeLang, hasVoiceForLang }
 }
