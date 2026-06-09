@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { VIBES, STYLES, PERSPECTIVES, MIN_PHOTOS, MAX_PHOTOS } from '../config'
+import { analyzeAlbum } from '../insightsClient'
 
 // The "set the mood" step shown after photos are chosen (from a Photos selection
 // or a Memory) and before generating — the same controls the dedicated creator
@@ -14,6 +15,32 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
   const [stylize, setStylize] = useState(true)
   const [bedtime, setBedtime] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  // AI album analysis: auto-fills title/context (when empty) and shows insights.
+  const [insights, setInsights] = useState(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  // Track whether the user has edited the fields so AI never clobbers their text.
+  const titleTouched = useRef(!!initialTitle)
+  const contextTouched = useRef(false)
+
+  async function analyze() {
+    setAnalyzing(true)
+    try {
+      const r = await analyzeAlbum(initialPhotos)
+      if (!r) return
+      setInsights(r)
+      if (r.title && !titleTouched.current) setTitle(r.title)
+      if (r.context && !contextTouched.current) setContext(r.context)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  // Run once when the screen opens with the chosen photos.
+  useEffect(() => {
+    analyze()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const canSubmit = photos.length >= MIN_PHOTOS && photos.length <= MAX_PHOTOS && !busy
 
@@ -83,6 +110,52 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
         </div>
       </section>
 
+      {/* AI album insights — also auto-fills title + context above. */}
+      <section className="card insights-card">
+        <div className="card-title">
+          <h2>✨ What we noticed</h2>
+          <button className="insights-regen" onClick={analyze} disabled={analyzing}>
+            {analyzing ? 'Analyzing…' : insights ? 'Regenerate' : 'Analyze'}
+          </button>
+        </div>
+
+        {analyzing && !insights && <p className="insights-loading">Looking through your photos…</p>}
+
+        {!analyzing && !insights && (
+          <p className="insights-empty">We couldn’t analyze these photos right now — you can still fill in the details yourself.</p>
+        )}
+
+        {insights && (
+          <div className="insights-body">
+            {insights.themes.length > 0 && (
+              <div className="insights-themes">
+                {insights.themes.map((t) => (
+                  <span key={t} className="insights-tag">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+            {insights.mood && (
+              <p className="insight-line">
+                <span className="insight-label">Mood</span> {insights.mood}
+              </p>
+            )}
+            {insights.highlight && (
+              <p className="insight-line">
+                <span className="insight-label">Highlight</span> {insights.highlight}
+              </p>
+            )}
+            {insights.people && (
+              <p className="insight-line">
+                <span className="insight-label">People</span> {insights.people}
+              </p>
+            )}
+            <p className="insights-foot">Title and context above were suggested from these photos — edit them anytime.</p>
+          </div>
+        )}
+      </section>
+
       {/* Story options */}
       <section className="card">
         <div className="card-title">
@@ -95,7 +168,10 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
             type="text"
             value={title}
             placeholder="Our trip to Bonneville Salt Flats"
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              titleTouched.current = true
+              setTitle(e.target.value)
+            }}
           />
         </label>
 
@@ -105,7 +181,10 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
             rows={3}
             value={context}
             placeholder="During Memorial Day we went to the Bonneville Salt Flats as a family."
-            onChange={(e) => setContext(e.target.value)}
+            onChange={(e) => {
+              contextTouched.current = true
+              setContext(e.target.value)
+            }}
           />
         </label>
 

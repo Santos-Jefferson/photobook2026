@@ -3114,3 +3114,69 @@ button {
   margin: 0;
   font-size: 15px;
 }
+
+/* Album insights card on the BookOptions step */
+.insights-card .card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.insights-regen {
+  border: none;
+  background: #eef2f7;
+  color: var(--accent-strong);
+  font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 7px 12px;
+  border-radius: 999px;
+}
+.insights-regen:disabled {
+  opacity: 0.5;
+}
+.insights-loading,
+.insights-empty {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 4px 0 0;
+}
+.insights-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.insights-themes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.insights-tag {
+  background: linear-gradient(135deg, rgba(10, 161, 221, 0.12), rgba(20, 200, 176, 0.12));
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+.insight-line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.insight-label {
+  display: inline-block;
+  min-width: 64px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+}
+.insights-foot {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
