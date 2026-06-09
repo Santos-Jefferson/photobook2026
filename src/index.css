@@ -1838,30 +1838,35 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   background: none;
   border: none;
-  padding: 9px 0 8px;
+  padding: 8px 0 7px;
   cursor: pointer;
-  color: #aeb9cb;
+  color: #8a95a6;
   font-family: inherit;
 }
+/* Real Capsyl wl-icon SVGs, recolored through the element's `color` via mask. */
 .bottom-nav-icon {
-  font-size: 20px;
-  line-height: 1;
+  width: 25px;
+  height: 25px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 .bottom-nav-label {
   font-size: 11px;
   font-weight: 600;
 }
 .bottom-nav-item.active {
-  color: #fff;
+  color: var(--capsyl-teal, #14b8c7);
 }
 .bottom-nav-item.active .bottom-nav-label {
-  color: #00c9e8;
-}
-.bottom-nav-item.active .bottom-nav-icon {
-  filter: drop-shadow(0 0 7px rgba(0, 201, 232, 0.85));
+  color: var(--capsyl-teal, #14b8c7);
 }
 
 @media (max-width: 760px) {
@@ -1872,9 +1877,10 @@ button {
     right: 0;
     bottom: 0;
     z-index: 60;
-    background: #232c3a;
+    background: #ffffff;
     padding-bottom: env(safe-area-inset-bottom);
-    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.22);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -2px 16px rgba(15, 45, 75, 0.06);
   }
   /* Lift the primary CTA above the bottom nav so it's always visible. */
   .cta {
