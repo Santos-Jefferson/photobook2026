@@ -117,7 +117,12 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
 
   const exportOptions = [
     { key: 'pdf', label: 'Download PDF', icon: '📄', run: () => downloadStoryPdf(displayBook) },
-    { key: 'video', label: 'Download video', icon: '🎬', run: () => downloadStoryVideo(displayBook) },
+    {
+      key: 'video',
+      label: 'Download video',
+      icon: '🎬',
+      run: () => downloadStoryVideo(displayBook, { lang: narration.lang, voice: narration.voice }),
+    },
     {
       key: 'html',
       // Self-contained .html (collage + offline narration in the current voice).
@@ -125,8 +130,18 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
       icon: '📖',
       run: () => downloadStoryHtml(displayBook, textLang || 'en', narration.voice),
     },
-    { key: 'whatsapp', label: 'Share to WhatsApp', icon: '🟢', run: () => shareToWhatsApp(displayBook) },
-    { key: 'instagram', label: 'Share to Instagram', icon: '📸', run: () => shareToInstagram(displayBook) },
+    {
+      key: 'whatsapp',
+      label: 'Share to WhatsApp',
+      icon: '🟢',
+      run: () => shareToWhatsApp(displayBook, { lang: narration.lang, voice: narration.voice }),
+    },
+    {
+      key: 'instagram',
+      label: 'Share to Instagram',
+      icon: '📸',
+      run: () => shareToInstagram(displayBook, { lang: narration.lang, voice: narration.voice }),
+    },
   ]
 
   // Close the editor when leaving a photo slide.

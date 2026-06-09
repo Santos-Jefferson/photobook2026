@@ -3,6 +3,7 @@
 // user can pick WhatsApp / Instagram / etc.) with sensible desktop fallbacks.
 
 import { buildSlides } from './book'
+import { narrationTextForSlide } from './narration'
 
 function slugify(s) {
   return (
@@ -248,22 +249,41 @@ export async function buildCoverPngBlob(book) {
 
 // ------------------------------------------------------------- video ---------
 
-// Render the story as a short slideshow video (one frame per slide with a soft
-// fade) using a canvas + MediaRecorder. Returns a Blob, or null when the browser
-// can't record (older Safari) so callers can fall back to the cover image.
-export async function buildStoryVideoBlob(book, { perSlideMs = 2000, size = 1080 } = {}) {
+// Render the story as a vertical (9:16) "Stories" video with the chosen narration
+// voice as the soundtrack: each slide is held for the length of its narration clip
+// (drawn live on a canvas) while the audio plays through a Web Audio destination;
+// both tracks are captured together by one MediaRecorder so they stay in sync.
+// Returns a Blob, or null when the browser can't record (e.g. older Safari).
+export async function buildStoryVideoBlob(book, { lang = 'en', voice = 'female', fps = 30 } = {}) {
   if (typeof MediaRecorder === 'undefined') return null
+  const W = 1080
+  const H = 1920 // 9:16, Stories format
   const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
+  canvas.width = W
+  canvas.height = H
   if (typeof canvas.captureStream !== 'function') return null
   const ctx = canvas.getContext('2d')
-  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(
-    (m) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m),
-  )
+
+  const AudioCtx = window.AudioContext || window.webkitAudioContext
+  const audioCtx = AudioCtx ? new AudioCtx() : null
+  if (audioCtx) {
+    try {
+      await audioCtx.resume()
+    } catch {
+      /* may already be running */
+    }
+  }
+
+  // Prefer a webm flavour that carries an opus audio track.
+  const mime = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ].find((m) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m))
   if (!mime) return null
 
-  // Preload every slide's image up front (cover for opening/closing).
+  // Preload each slide's image + narration audio buffer up front.
   const slides = buildSlides(book)
   const frames = []
   for (const s of slides) {
@@ -276,66 +296,147 @@ export async function buildStoryVideoBlob(book, { perSlideMs = 2000, size = 1080
         img = null
       }
     }
-    frames.push({ s, img })
+    let audio = null
+    const text = narrationTextForSlide(s)
+    if (audioCtx && text) audio = await fetchNarrationBuffer(audioCtx, text, lang, voice)
+    frames.push({ s, img, audio })
   }
 
-  const stream = canvas.captureStream(30)
-  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_500_000 })
+  const videoStream = canvas.captureStream(fps)
+  const tracks = [...videoStream.getVideoTracks()]
+  let dest = null
+  if (audioCtx) {
+    dest = audioCtx.createMediaStreamDestination()
+    tracks.push(...dest.stream.getAudioTracks())
+  }
+  const rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: 5_000_000 })
   const chunks = []
   rec.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data)
   const stopped = new Promise((res) => (rec.onstop = res))
 
-  const drawFrame = (frame, p) => {
-    const { s, img } = frame
-    ctx.fillStyle = '#0b1620'
-    ctx.fillRect(0, 0, size, size)
-    if (img) {
-      const r = Math.max(size / img.width, size / img.height)
-      const w = img.width * r
-      const h = img.height * r
-      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
-    }
-    const scrim = ctx.createLinearGradient(0, size * 0.4, 0, size)
-    scrim.addColorStop(0, 'rgba(0,0,0,0)')
-    scrim.addColorStop(1, 'rgba(0,0,0,0.82)')
-    ctx.fillStyle = scrim
-    ctx.fillRect(0, 0, size, size)
-
-    const a = Math.min(1, p * 4) // quick fade-in
-    ctx.globalAlpha = a
-    ctx.fillStyle = '#fff'
-    ctx.textBaseline = 'alphabetic'
-    if (s.type === 'photo') {
-      drawWrapped(ctx, s.caption || '', 64, size - 220, size - 128, 56, '800 50px "Plus Jakarta Sans", Arial')
-      ctx.globalAlpha = a * 0.92
-      drawWrapped(ctx, trim(s.narrative, 160), 64, size - 130, size - 128, 34, '500 30px "Plus Jakarta Sans", Arial')
-    } else {
-      ctx.textAlign = 'center'
-      drawWrapped(ctx, s.title || '', size / 2, size - 170, size - 160, 70, '800 64px "Plus Jakarta Sans", Arial', 'center')
-      ctx.globalAlpha = a * 0.9
-      drawWrapped(ctx, trim(s.text, 140), size / 2, size - 80, size - 200, 34, '500 30px "Plus Jakarta Sans", Arial', 'center')
-      ctx.textAlign = 'left'
-    }
-    ctx.globalAlpha = 1
-  }
-
   rec.start()
-  for (const frame of frames) {
+  for (let i = 0; i < frames.length; i++) {
+    const frame = frames[i]
+    const durMs = (frame.audio ? frame.audio.duration * 1000 : 2200) + 350
+    let srcNode = null
+    if (frame.audio && dest) {
+      srcNode = audioCtx.createBufferSource()
+      srcNode.buffer = frame.audio
+      srcNode.connect(dest)
+      try {
+        srcNode.start()
+      } catch {
+        /* ignore */
+      }
+    }
     const start = performance.now()
     // eslint-disable-next-line no-await-in-loop
     await new Promise((resolve) => {
       const tick = () => {
         const elapsed = performance.now() - start
-        drawFrame(frame, Math.min(1, elapsed / perSlideMs))
-        if (elapsed >= perSlideMs) resolve()
+        drawVideoFrame(ctx, W, H, frame, Math.min(1, elapsed / durMs), i, frames.length)
+        if (elapsed >= durMs) resolve()
         else requestAnimationFrame(tick)
       }
       tick()
     })
+    if (srcNode) {
+      try {
+        srcNode.stop()
+      } catch {
+        /* already stopped */
+      }
+    }
   }
   rec.stop()
   await stopped
+  if (audioCtx) {
+    try {
+      await audioCtx.close()
+    } catch {
+      /* ignore */
+    }
+  }
   return chunks.length ? new Blob(chunks, { type: mime }) : null
+}
+
+// Fetch a slide's narration as a decoded AudioBuffer (chosen language + voice).
+// `translate: false` — the slide text is already in the chosen display language.
+async function fetchNarrationBuffer(audioCtx, text, lang, voice) {
+  try {
+    const res = await fetch('/api/narrate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, lang, gender: voice, translate: false }),
+    })
+    if (!res.ok) return null
+    const buf = await res.arrayBuffer()
+    return await audioCtx.decodeAudioData(buf)
+  } catch {
+    return null
+  }
+}
+
+function drawVideoFrame(ctx, W, H, frame, p, idx, total) {
+  const { s, img } = frame
+  ctx.fillStyle = '#0b1620'
+  ctx.fillRect(0, 0, W, H)
+  if (img) {
+    const r = Math.max(W / img.width, H / img.height)
+    const w = img.width * r
+    const h = img.height * r
+    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h)
+  }
+  const scrim = ctx.createLinearGradient(0, H * 0.5, 0, H)
+  scrim.addColorStop(0, 'rgba(0,0,0,0)')
+  scrim.addColorStop(1, 'rgba(0,0,0,0.85)')
+  ctx.fillStyle = scrim
+  ctx.fillRect(0, 0, W, H)
+
+  // top "stories" progress bar
+  const pad = 28
+  const gap = 8
+  const segW = (W - pad * 2 - (total - 1) * gap) / total
+  for (let i = 0; i < total; i++) {
+    const x = pad + i * (segW + gap)
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'
+    roundRectPath(ctx, x, pad, segW, 5, 2.5)
+    ctx.fill()
+    const fillW = i < idx ? segW : i === idx ? segW * p : 0
+    if (fillW > 0) {
+      ctx.fillStyle = '#ffffff'
+      roundRectPath(ctx, x, pad, fillW, 5, 2.5)
+      ctx.fill()
+    }
+  }
+
+  const a = Math.min(1, p * 4) // quick fade-in
+  ctx.globalAlpha = a
+  ctx.fillStyle = '#fff'
+  ctx.textBaseline = 'alphabetic'
+  if (s.type === 'photo') {
+    drawWrapped(ctx, s.caption || '', 64, H - 360, W - 128, 70, '800 60px "Plus Jakarta Sans", Arial')
+    ctx.globalAlpha = a * 0.92
+    drawWrapped(ctx, trim(s.narrative, 240), 64, H - 200, W - 128, 44, '500 36px "Plus Jakarta Sans", Arial')
+  } else {
+    ctx.textAlign = 'center'
+    drawWrapped(ctx, s.title || '', W / 2, H - 320, W - 160, 86, '800 76px "Plus Jakarta Sans", Arial', 'center')
+    ctx.globalAlpha = a * 0.9
+    drawWrapped(ctx, trim(s.text, 200), W / 2, H - 190, W - 200, 44, '500 36px "Plus Jakarta Sans", Arial', 'center')
+    ctx.textAlign = 'left'
+  }
+  ctx.globalAlpha = 1
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + rr, y)
+  ctx.arcTo(x + w, y, x + w, y + h, rr)
+  ctx.arcTo(x + w, y + h, x, y + h, rr)
+  ctx.arcTo(x, y + h, x, y, rr)
+  ctx.arcTo(x, y, x + w, y, rr)
+  ctx.closePath()
 }
 
 function trim(s, n) {
@@ -365,8 +466,8 @@ function drawWrapped(ctx, text, x, yBottom, maxW, lineH, font, align) {
   }
 }
 
-export async function downloadStoryVideo(book) {
-  const blob = await buildStoryVideoBlob(book)
+export async function downloadStoryVideo(book, opts) {
+  const blob = await buildStoryVideoBlob(book, opts)
   if (blob) triggerDownload(blob, slugify(book && book.title) + '.webm')
   return !!blob
 }
@@ -385,11 +486,11 @@ async function shareFiles(files, title, text) {
   return false
 }
 
-// Share the story as a slideshow video; if the browser can't record one, fall
-// back to the cover image so something visual is always shared.
-async function shareVideoOrCover(book, title, text) {
+// Share the story as a vertical narrated video; if the browser can't record one,
+// fall back to the cover image so something visual is always shared.
+async function shareVideoOrCover(book, title, text, opts) {
   try {
-    const video = await buildStoryVideoBlob(book)
+    const video = await buildStoryVideoBlob(book, opts)
     if (video) {
       const file = new File([video], slugify(title) + '.webm', { type: video.type || 'video/webm' })
       if (await shareFiles([file], title, text)) return true
@@ -409,18 +510,18 @@ async function shareVideoOrCover(book, title, text) {
   return false
 }
 
-// WhatsApp: share the story video via the native sheet (mobile); on desktop with
-// no share support, open WhatsApp Web prefilled with a message.
-export async function shareToWhatsApp(book) {
+// WhatsApp: share the narrated Stories video via the native sheet (mobile); on
+// desktop with no share support, open WhatsApp Web prefilled with a message.
+export async function shareToWhatsApp(book, opts) {
   const title = (book && book.title) || 'Our Story'
   const text = `${title} — a little photo story 📖`
-  if (await shareVideoOrCover(book, title, text)) return
+  if (await shareVideoOrCover(book, title, text, opts)) return
   window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener')
 }
 
-// Instagram has no web post intent: share the story video (or cover image) via the
-// native sheet so the user can pick Instagram, or download it to post manually.
-export async function shareToInstagram(book) {
+// Instagram has no web post intent: share the narrated Stories video (or cover
+// image) via the native sheet so the user can pick Instagram, or download it.
+export async function shareToInstagram(book, opts) {
   const title = (book && book.title) || 'Our Story'
-  await shareVideoOrCover(book, title, '')
+  await shareVideoOrCover(book, title, '', opts)
 }
