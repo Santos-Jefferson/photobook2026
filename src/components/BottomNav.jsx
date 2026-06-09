@@ -70,8 +70,8 @@ const LibraryIcon = () => (
 )
 
 const ITEMS = [
-  { key: 'create', view: 'create', Icon: HomeIcon, label: 'Home' },
-  { key: 'explore', view: 'create', Icon: ExploreIcon, label: 'Explore' },
+  { key: 'home', view: 'home', Icon: HomeIcon, label: 'Home' },
+  { key: 'explore', view: 'explore', Icon: ExploreIcon, label: 'Explore' },
   { key: 'photos', view: 'photos', Icon: PhotosIcon, label: 'Photos' },
   { key: 'memories', view: 'memories', Icon: MemoriesIcon, label: 'Memories' },
   { key: 'saved', view: 'saved', Icon: LibraryIcon, label: 'Library' },

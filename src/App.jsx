@@ -4,19 +4,26 @@ import StoryViewer from './components/StoryViewer'
 import SavedBooks from './components/SavedBooks'
 import Memories from './components/Memories'
 import Photos from './components/Photos'
+import Home from './components/Home'
+import People from './components/People'
+import TopBar from './components/TopBar'
 import Loader from './components/Loader'
 import ErrorBoundary from './components/ErrorBoundary'
 import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase64, getApiUrl } from './api'
 import { normalizeBook } from './book'
+import { getSavedBook } from './bookStorage'
 import { rewriteBookPerspective } from './perspectiveClient'
 import { VIBES, STYLES, PERSPECTIVES, MIN_PHOTOS, MAX_PHOTOS } from './config'
 import BottomNav from './components/BottomNav'
 
 export default function App() {
-  const [view, setView] = useState('create') // create | loading | story | saved | error
+  const [view, setView] = useState('home') // home | explore | photos | memories | saved | creator | loading | story | error
   const [book, setBook] = useState(null)
   const [savedId, setSavedId] = useState('') // id of the saved record this book maps to
   const [error, setError] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0) // bumped on uploads to refresh tabs
+
+  const bumpRefresh = () => setRefreshKey((k) => k + 1)
 
   async function handleGenerate({ payload, previewDataUrls, demo }) {
     setView('loading')
@@ -80,13 +87,19 @@ export default function App() {
     setBook(null)
     setSavedId('')
     setError('')
-    setView('create')
+    setView('home')
   }
 
   function openSaved(savedBook, id) {
     setBook(savedBook)
     setSavedId(id)
     setView('story')
+  }
+
+  // Open a saved photobook by id (from the Home dashboard).
+  async function openSavedById(id) {
+    const b = await getSavedBook(id)
+    if (b) openSaved(b, id)
   }
 
   // Generate a photobook straight from a user's memory (or a Photos selection):
@@ -129,33 +142,6 @@ export default function App() {
 
   if (view === 'loading') return <Loader />
 
-  if (view === 'saved') {
-    return (
-      <>
-        <SavedBooks onOpen={openSaved} onBack={() => setView('create')} />
-        <BottomNav active="saved" onNavigate={setView} />
-      </>
-    )
-  }
-
-  if (view === 'memories') {
-    return (
-      <>
-        <Memories onCreate={generateFromMemory} onBack={() => setView('create')} />
-        <BottomNav active="memories" onNavigate={setView} />
-      </>
-    )
-  }
-
-  if (view === 'photos') {
-    return (
-      <>
-        <Photos onBack={() => setView('create')} onCreatePhotobook={createPhotobookFromPhotos} />
-        <BottomNav active="photos" onNavigate={setView} />
-      </>
-    )
-  }
-
   if (view === 'story' && book) {
     return (
       <ErrorBoundary onReset={reset}>
@@ -164,17 +150,53 @@ export default function App() {
     )
   }
 
+  // The manual "from scratch" creator (upload + story options), reached from the
+  // Home CTA. Also where generation errors are shown.
+  if (view === 'creator' || view === 'error') {
+    return (
+      <>
+        <TopBar onNavigate={setView} onUploaded={bumpRefresh} />
+        <Creator
+          onGenerate={handleGenerate}
+          error={view === 'error' ? error : ''}
+          buildPayload={buildPayload}
+          onOpenSaved={() => setView('saved')}
+          onOpenMemories={() => setView('memories')}
+          onOpenPhotos={() => setView('photos')}
+        />
+        <BottomNav active="home" onNavigate={setView} />
+      </>
+    )
+  }
+
+  // Main tabs share the top bar + bottom nav.
+  let tab = null
+  let active = view
+  if (view === 'explore') {
+    tab = <People onBack={() => setView('home')} />
+  } else if (view === 'photos') {
+    tab = <Photos key={'photos-' + refreshKey} onBack={() => setView('home')} onCreatePhotobook={createPhotobookFromPhotos} />
+  } else if (view === 'memories') {
+    tab = <Memories onCreate={generateFromMemory} onBack={() => setView('home')} />
+  } else if (view === 'saved') {
+    tab = <SavedBooks onOpen={openSaved} onBack={() => setView('home')} />
+  } else {
+    active = 'home'
+    tab = (
+      <Home
+        refreshKey={refreshKey}
+        onNavigate={setView}
+        onOpenBook={openSavedById}
+        onCreate={() => setView('creator')}
+      />
+    )
+  }
+
   return (
     <>
-      <Creator
-        onGenerate={handleGenerate}
-        error={view === 'error' ? error : ''}
-        buildPayload={buildPayload}
-        onOpenSaved={() => setView('saved')}
-        onOpenMemories={() => setView('memories')}
-        onOpenPhotos={() => setView('photos')}
-      />
-      <BottomNav active="create" onNavigate={setView} />
+      <TopBar onNavigate={setView} onUploaded={bumpRefresh} />
+      {tab}
+      <BottomNav active={active} onNavigate={setView} />
     </>
   )
 }
