@@ -287,7 +287,7 @@ export async function buildStoryVideoBlob(book, { lang = 'en', voice = 'female',
   const slides = buildSlides(book)
   const frames = []
   for (const s of slides) {
-    const src = s.type === 'photo' ? s.styled || s.image || s.original : (book && book.__cover) || null
+    const src = s.type === 'photo' ? s.styled || s.image || s.original : null
     let img = null
     if (src) {
       try {
@@ -301,6 +301,11 @@ export async function buildStoryVideoBlob(book, { lang = 'en', voice = 'female',
     if (audioCtx && text) audio = await fetchNarrationBuffer(audioCtx, text, lang, voice)
     frames.push({ s, img, audio })
   }
+
+  // Opening / closing frames show a collage of all the story photos — matching
+  // the on-screen covers and the HTML export — rather than a single image.
+  const collage = frames.filter((f) => f.s.type === 'photo' && f.img).map((f) => f.img)
+  for (const f of frames) if (f.s.type !== 'photo') f.collage = collage
 
   const videoStream = canvas.captureStream(fps)
   const tracks = [...videoStream.getVideoTracks()]
@@ -381,7 +386,9 @@ function drawVideoFrame(ctx, W, H, frame, p, idx, total) {
   const { s, img } = frame
   ctx.fillStyle = '#0b1620'
   ctx.fillRect(0, 0, W, H)
-  if (img) {
+  if (s.type !== 'photo' && frame.collage && frame.collage.length) {
+    drawCollage(ctx, W, H, frame.collage)
+  } else if (img) {
     const r = Math.max(W / img.width, H / img.height)
     const w = img.width * r
     const h = img.height * r
@@ -426,6 +433,40 @@ function drawVideoFrame(ctx, W, H, frame, p, idx, total) {
     ctx.textAlign = 'left'
   }
   ctx.globalAlpha = 1
+}
+
+// Tile the story photos to fill the frame (cover-fit per cell, thin white gaps),
+// matching the on-screen / HTML cover collage.
+function drawCollage(ctx, W, H, imgs) {
+  const list = imgs.slice(0, 9)
+  const n = list.length
+  if (!n) return
+  const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3
+  const rows = Math.ceil(n / cols)
+  const cellH = H / rows
+  let i = 0
+  for (let r = 0; r < rows; r++) {
+    const cellsThisRow = Math.min(cols, n - r * cols)
+    const cellW = W / cellsThisRow
+    for (let c = 0; c < cellsThisRow; c++) {
+      drawCover(ctx, list[i++], c * cellW, r * cellH, cellW, cellH)
+    }
+  }
+}
+
+function drawCover(ctx, img, x, y, w, h) {
+  const r = Math.max(w / img.width, h / img.height)
+  const iw = img.width * r
+  const ih = img.height * r
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih)
+  ctx.restore()
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'
+  ctx.lineWidth = 4
+  ctx.strokeRect(x, y, w, h)
 }
 
 function roundRectPath(ctx, x, y, w, h, r) {
