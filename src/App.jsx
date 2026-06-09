@@ -14,6 +14,7 @@ import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase6
 import { normalizeBook } from './book'
 import { getSavedBook } from './bookStorage'
 import { rewriteBookPerspective } from './perspectiveClient'
+import { rewriteBookBedtime } from './bedtimeClient'
 import { MIN_PHOTOS, MAX_PHOTOS } from './config'
 import BottomNav from './components/BottomNav'
 
@@ -27,7 +28,7 @@ export default function App() {
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1)
 
-  async function handleGenerate({ payload, previewDataUrls, demo }) {
+  async function handleGenerate({ payload, previewDataUrls, demo, bedtime }) {
     setView('loading')
     setError('')
     setSavedId('') // a freshly generated book isn't saved yet
@@ -74,7 +75,10 @@ export default function App() {
 
       // Retell the story in the chosen narrator perspective (no-op for the
       // neutral "AI Storyteller"; falls back to the original on any failure).
-      const finalBook = await rewriteBookPerspective(result, payload?.perspective)
+      let finalBook = await rewriteBookPerspective(result, payload?.perspective)
+
+      // Optionally soften the whole story into a gentle bedtime read.
+      if (bedtime) finalBook = await rewriteBookBedtime(finalBook)
 
       setBook(finalBook)
       setView('story')
@@ -127,7 +131,7 @@ export default function App() {
   }
 
   // Run generation with the photos + the options chosen on the BookOptions step.
-  async function generateWithOptions({ photos, title, context, vibe, style, perspective, stylize }) {
+  async function generateWithOptions({ photos, title, context, vibe, style, perspective, stylize, bedtime }) {
     try {
       const previewDataUrls = photos // JPEG data URLs
       const photosBase64 = photos.map((d) => d.replace(/^data:[^,]+,/, ''))
@@ -140,7 +144,7 @@ export default function App() {
         context,
         perspective,
       })
-      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl() })
+      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl(), bedtime })
     } catch (err) {
       setError(err.message || String(err))
       setView('error')

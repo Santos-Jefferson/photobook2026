@@ -326,6 +326,13 @@ button {
   height: 18px;
   accent-color: var(--accent);
 }
+.toggle-sub {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 1px;
+}
 
 .meta-hint {
   display: flex;
