@@ -1846,17 +1846,12 @@ button {
   color: #8a95a6;
   font-family: inherit;
 }
-/* Real Capsyl wl-icon SVGs, recolored through the element's `color` via mask. */
+/* Real Capsyl wl-icon glyphs, inlined as SVG; `color` drives the fill. */
 .bottom-nav-icon {
   width: 25px;
   height: 25px;
-  background-color: currentColor;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
+  display: block;
+  color: inherit;
 }
 .bottom-nav-label {
   font-size: 11px;
