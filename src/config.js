@@ -40,6 +40,10 @@ export const STYLES = [
 
 export const MAX_PHOTOS = 5
 
+// A photobook needs at least this many photos (a single photo can't tell a
+// story). Enforced in every create flow (uploader, Photos selection, memories).
+export const MIN_PHOTOS = 2
+
 // Narrator perspective for the story. `ai` is the neutral default (no rewrite);
 // the others retell the captions/narration in that voice via the LLM.
 export const PERSPECTIVES = [

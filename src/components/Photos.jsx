@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listPhotos, addPhotos, setFavorite, deletePhotos, updatePhotoImage } from '../photoStore'
 import { fileToOrientedBase64 } from '../api'
+import { MIN_PHOTOS, MAX_PHOTOS } from '../config'
 import PhotoChat from './PhotoChat'
 
 // Clean line icons, in the spirit of Capsyl's wl-icon set, so the toolbars read
@@ -70,9 +71,17 @@ export default function Photos({ onBack, onCreatePhotobook }) {
   const [favOnly, setFavOnly] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
+  const [notice, setNotice] = useState('') // hint shown above the action bar
   const [detail, setDetail] = useState(null) // open photo (detail view)
   const [busy, setBusy] = useState(false)
   const fileInput = useRef(null)
+
+  // Enter multi-select, optionally pre-selecting a photo with a guiding hint.
+  function startSelect(preselectId, hint) {
+    setSelectMode(true)
+    setSelected(new Set(preselectId ? [preselectId] : []))
+    setNotice(hint || '')
+  }
 
   async function refresh() {
     try {
@@ -99,6 +108,7 @@ export default function Photos({ onBack, onCreatePhotobook }) {
   }
 
   function toggleSelect(id) {
+    setNotice('') // once they start picking, the live 2–5 hint takes over
     setSelected((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
@@ -109,11 +119,22 @@ export default function Photos({ onBack, onCreatePhotobook }) {
   function exitSelect() {
     setSelectMode(false)
     setSelected(new Set())
+    setNotice('')
   }
 
   const all = photos || []
   const shown = favOnly ? all.filter((p) => p.favorite) : all
   const selectedPhotos = all.filter((p) => selected.has(p.id))
+  const count = selected.size
+  const bookReady = count >= MIN_PHOTOS && count <= MAX_PHOTOS
+  // What to tell the user about the 2–5 rule for the current selection.
+  const bookHint = notice
+    ? notice
+    : count < MIN_PHOTOS
+      ? `Select at least ${MIN_PHOTOS} photos for a photobook.`
+      : count > MAX_PHOTOS
+        ? `A photobook holds up to ${MAX_PHOTOS} photos — deselect ${count - MAX_PHOTOS}.`
+        : `${count} photos — ready to create.`
 
   // ----- Maximized photo detail view -----
   if (detail) {
@@ -132,7 +153,12 @@ export default function Photos({ onBack, onCreatePhotobook }) {
           setDetail(null)
           refresh()
         }}
-        onCreateBook={() => onCreatePhotobook([live.url], 'My photo')}
+        onCreateBook={() => {
+          // A book needs 2–5 photos, so from a single photo we drop into
+          // multi-select with this one pre-picked and a hint to add more.
+          setDetail(null)
+          startSelect(live.id, `Pick ${MIN_PHOTOS - 1}–${MAX_PHOTOS - 1} more photos — a photobook uses ${MIN_PHOTOS}–${MAX_PHOTOS}.`)
+        }}
         onImageEdited={async (url) => {
           await updatePhotoImage(live.id, url)
           refresh()
@@ -240,9 +266,11 @@ export default function Photos({ onBack, onCreatePhotobook }) {
       {/* Multi-select action bar — Create photobook is the primary action. */}
       {selectMode && (
         <div className="photos-actionbar">
+          <div className={`photos-actionbar-hint ${count && !bookReady ? 'warn' : ''}`}>{bookHint}</div>
+          <div className="photos-actionbar-row">
           <button
             className="photos-action primary"
-            disabled={!selected.size}
+            disabled={!bookReady}
             onClick={() => onCreatePhotobook(selectedPhotos.map((p) => p.url), 'My photos')}
           >
             <Icon name="book" />
@@ -281,6 +309,7 @@ export default function Photos({ onBack, onCreatePhotobook }) {
             <Icon name="trash" />
             <span>Delete</span>
           </button>
+          </div>
         </div>
       )}
     </div>

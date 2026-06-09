@@ -9,8 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase64, getApiUrl } from './api'
 import { normalizeBook } from './book'
 import { rewriteBookPerspective } from './perspectiveClient'
-import { VIBES, STYLES, PERSPECTIVES } from './config'
-import { bakeCoverFromImage } from './demoMemory'
+import { VIBES, STYLES, PERSPECTIVES, MIN_PHOTOS, MAX_PHOTOS } from './config'
 import BottomNav from './components/BottomNav'
 
 export default function App() {
@@ -19,7 +18,7 @@ export default function App() {
   const [savedId, setSavedId] = useState('') // id of the saved record this book maps to
   const [error, setError] = useState('')
 
-  async function handleGenerate({ payload, previewDataUrls, demo, cover }) {
+  async function handleGenerate({ payload, previewDataUrls, demo }) {
     setView('loading')
     setError('')
     setSavedId('') // a freshly generated book isn't saved yet
@@ -68,9 +67,6 @@ export default function App() {
       // neutral "AI Storyteller"; falls back to the original on any failure).
       const finalBook = await rewriteBookPerspective(result, payload?.perspective)
 
-      // Carry a Capsyl-style cover into the book (opening slide + saved thumbnail).
-      if (cover) finalBook.__cover = cover
-
       setBook(finalBook)
       setView('story')
     } catch (err) {
@@ -93,16 +89,21 @@ export default function App() {
     setView('story')
   }
 
-  // Generate a photobook straight from a user's memory: their photos feed the
-  // normal generation flow, with a baked Capsyl-style cover (title over the lead
-  // photo).
+  // Generate a photobook straight from a user's memory (or a Photos selection):
+  // their photos feed the normal generation flow. The cover uses the same
+  // all-photos collage as a from-scratch book (no baked single-image cover).
   async function generateFromMemory(memory) {
+    // A photobook needs 2–5 photos. Trim to the max; bail with a notice if too few.
+    const photos = (memory.photos || []).slice(0, MAX_PHOTOS)
+    if (photos.length < MIN_PHOTOS) {
+      window.alert(`A photobook needs at least ${MIN_PHOTOS} photos. Add one more and try again.`)
+      return
+    }
     setView('loading')
     setError('')
     try {
-      const previewDataUrls = memory.photos // JPEG data URLs
-      const photosBase64 = memory.photos.map((d) => d.replace(/^data:[^,]+,/, ''))
-      const cover = await bakeCoverFromImage(memory.title, memory.photos[0])
+      const previewDataUrls = photos // JPEG data URLs
+      const photosBase64 = photos.map((d) => d.replace(/^data:[^,]+,/, ''))
       const payload = buildPayload({
         photosBase64,
         vibe: VIBES[0],
@@ -112,7 +113,7 @@ export default function App() {
         context: '',
         perspective: PERSPECTIVES[0].code,
       })
-      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl(), cover })
+      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl() })
     } catch (err) {
       setError(err.message || String(err))
       setView('error')

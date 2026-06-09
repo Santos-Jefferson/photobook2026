@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listMemories, saveMemory, deleteMemory } from '../memoryStore'
 import { fileToOrientedBase64 } from '../api'
+import { MIN_PHOTOS, MAX_PHOTOS } from '../config'
 
 const MAX_MEMORY_PHOTOS = 8
 
@@ -115,9 +116,23 @@ function MemoryDetail({ memory, onBack, onCreate }) {
         ))}
       </div>
 
-      <button className="memory-create" onClick={() => onCreate(memory)}>
-        ✨ Create photobook
-      </button>
+      {(() => {
+        const n = memory.photos.length
+        const tooFew = n < MIN_PHOTOS
+        const note = tooFew
+          ? `A photobook needs at least ${MIN_PHOTOS} photos.`
+          : n > MAX_PHOTOS
+            ? `Uses the first ${MAX_PHOTOS} of ${n} photos.`
+            : ''
+        return (
+          <>
+            {note && <p className={`memory-book-note ${tooFew ? 'warn' : ''}`}>{note}</p>}
+            <button className="memory-create" disabled={tooFew} onClick={() => onCreate(memory)}>
+              ✨ Create photobook
+            </button>
+          </>
+        )
+      })()}
     </div>
   )
 }
