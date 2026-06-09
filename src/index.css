@@ -1995,3 +1995,380 @@ button {
 .chat-suggestions {
   margin-bottom: 10px;
 }
+
+/* ============================================================
+   Photos library (Capsyl-style grid + multi-select + detail)
+   ============================================================ */
+.photos {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 14px 12px 60px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+.photos-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 10px;
+}
+.photos-head h1 {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.photos-head-spacer {
+  width: 64px;
+}
+.photos-head-btn {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+  min-width: 64px;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+}
+.photos-head-btn.icon {
+  min-width: 44px;
+}
+.photos-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.photos-tool-spacer {
+  flex: 1;
+}
+.photos-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+.photos-tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.photos-tool.on {
+  color: var(--danger);
+}
+.photos-tool-label {
+  font-size: 13px;
+}
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+@media (min-width: 560px) {
+  .photos-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.photo-cell {
+  position: relative;
+  border: none;
+  padding: 0;
+  margin: 0;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-soft);
+}
+.photo-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.15s ease;
+}
+.photo-cell.selected img {
+  transform: scale(0.86);
+}
+.photo-cell-fav {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.photo-cell-fav svg {
+  width: 16px;
+  height: 16px;
+}
+.photo-cell-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.25);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.photo-cell-check.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.photo-cell-check svg {
+  width: 15px;
+  height: 15px;
+}
+.photos-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 60px 20px;
+}
+.photos-empty-add {
+  margin-top: 14px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+/* Multi-select action bar */
+.photos-actionbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  gap: 4px;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 18px rgba(15, 45, 75, 0.08);
+}
+.photos-action {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+  border-radius: 12px;
+}
+.photos-action svg {
+  width: 22px;
+  height: 22px;
+}
+.photos-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.photos-action.primary {
+  flex: 1.5;
+  color: var(--accent-strong);
+}
+.photos-action.danger {
+  color: var(--danger);
+}
+
+/* ---- Maximized photo detail ---- */
+.photo-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: #0c1118;
+  display: flex;
+  flex-direction: column;
+}
+.photo-detail-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
+}
+.photo-detail-top-spacer {
+  flex: 1;
+}
+.pd-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.photo-detail-stage {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 4px;
+}
+.photo-detail-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.photo-detail-info {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  padding: 6px 12px;
+}
+.photo-detail-bar {
+  display: flex;
+  padding: 10px 6px calc(12px + env(safe-area-inset-bottom));
+  background: #0c1118;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.pd-tool {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+.pd-tool svg {
+  width: 23px;
+  height: 23px;
+}
+.pd-tool.accent {
+  color: #2bc4ee;
+}
+.pd-tool.on {
+  color: #fff;
+}
+
+/* Chat-or-book chooser sheet */
+.pd-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.4);
+}
+.pd-sheet-card {
+  width: 100%;
+  background: var(--card);
+  border-radius: 22px 22px 0 0;
+  padding: 10px 16px calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: pd-sheet-up 0.2s ease;
+}
+@keyframes pd-sheet-up {
+  from {
+    transform: translateY(30px);
+    opacity: 0.6;
+  }
+}
+.pd-sheet-grip {
+  align-self: center;
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  margin: 4px 0 8px;
+}
+.pd-sheet-opt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  border-radius: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  font-family: inherit;
+}
+.pd-sheet-opt svg {
+  width: 26px;
+  height: 26px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.pd-sheet-opt span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pd-sheet-opt strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+.pd-sheet-opt small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Photo-chat overlay inside the detail view */
+.pd-chat-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.pd-chat-overlay .chat {
+  width: 100%;
+  max-width: var(--maxw);
+  max-height: 88vh;
+}
+
+/* Keep the grid clear of the fixed bottom nav. */
+@media (max-width: 760px) {
+  .photos {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+}

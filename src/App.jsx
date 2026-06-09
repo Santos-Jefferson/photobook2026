@@ -3,6 +3,7 @@ import Creator from './components/Creator'
 import StoryViewer from './components/StoryViewer'
 import SavedBooks from './components/SavedBooks'
 import Memories from './components/Memories'
+import Photos from './components/Photos'
 import Loader from './components/Loader'
 import ErrorBoundary from './components/ErrorBoundary'
 import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase64, getApiUrl } from './api'
@@ -118,6 +119,13 @@ export default function App() {
     }
   }
 
+  // Photos tab → "Create photobook" on a selection of library photos. They're
+  // already JPEG data URLs, so they slot straight into the memory flow.
+  function createPhotobookFromPhotos(photoUrls, title) {
+    if (!photoUrls || !photoUrls.length) return
+    generateFromMemory({ title: title || 'My photos', photos: photoUrls })
+  }
+
   if (view === 'loading') return <Loader />
 
   if (view === 'saved') {
@@ -134,6 +142,15 @@ export default function App() {
       <>
         <Memories onCreate={generateFromMemory} onBack={() => setView('create')} />
         <BottomNav active="memories" onNavigate={setView} />
+      </>
+    )
+  }
+
+  if (view === 'photos') {
+    return (
+      <>
+        <Photos onBack={() => setView('create')} onCreatePhotobook={createPhotobookFromPhotos} />
+        <BottomNav active="photos" onNavigate={setView} />
       </>
     )
   }

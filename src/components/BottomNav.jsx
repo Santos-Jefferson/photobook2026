@@ -1,7 +1,8 @@
 // Capsyl-style bottom navigation, shown on mobile only (hidden on desktop via
 // CSS). Switches between the app's main destinations.
 const ITEMS = [
-  { key: 'create', icon: '🖼️', label: 'Create' },
+  { key: 'create', icon: '✏️', label: 'Create' },
+  { key: 'photos', icon: '🖼️', label: 'Photos' },
   { key: 'memories', icon: '✨', label: 'Memories' },
   { key: 'saved', icon: '📚', label: 'Saved' },
 ]
