@@ -6,6 +6,7 @@ import Memories from './components/Memories'
 import Photos from './components/Photos'
 import Home from './components/Home'
 import People from './components/People'
+import BookOptions from './components/BookOptions'
 import TopBar from './components/TopBar'
 import Loader from './components/Loader'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -13,7 +14,7 @@ import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase6
 import { normalizeBook } from './book'
 import { getSavedBook } from './bookStorage'
 import { rewriteBookPerspective } from './perspectiveClient'
-import { VIBES, STYLES, PERSPECTIVES, MIN_PHOTOS, MAX_PHOTOS } from './config'
+import { MIN_PHOTOS, MAX_PHOTOS } from './config'
 import BottomNav from './components/BottomNav'
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
   const [savedId, setSavedId] = useState('') // id of the saved record this book maps to
   const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0) // bumped on uploads to refresh tabs
+  const [pending, setPending] = useState(null) // { photos: [dataURL], title } awaiting options
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1)
 
@@ -102,42 +104,47 @@ export default function App() {
     if (b) openSaved(b, id)
   }
 
-  // Generate a photobook straight from a user's memory (or a Photos selection):
-  // their photos feed the normal generation flow. The cover uses the same
-  // all-photos collage as a from-scratch book (no baked single-image cover).
-  async function generateFromMemory(memory) {
-    // A photobook needs 2–5 photos. Trim to the max; bail with a notice if too few.
-    const photos = (memory.photos || []).slice(0, MAX_PHOTOS)
+  // Both create flows (a Memory or a Photos selection) funnel here: validate the
+  // 2–5 rule, then show the options step (mood / style / context) before
+  // generating, like the dedicated creator page.
+  function startBook(photoUrls, title, from) {
+    const photos = (photoUrls || []).slice(0, MAX_PHOTOS)
     if (photos.length < MIN_PHOTOS) {
       window.alert(`A photobook needs at least ${MIN_PHOTOS} photos. Add one more and try again.`)
       return
     }
-    setView('loading')
+    setPending({ photos, title: title || '', from: from || 'home' })
     setError('')
+    setView('bookOptions')
+  }
+
+  function generateFromMemory(memory) {
+    startBook(memory.photos, memory.title, 'memories')
+  }
+
+  function createPhotobookFromPhotos(photoUrls, title) {
+    startBook(photoUrls, title, 'photos')
+  }
+
+  // Run generation with the photos + the options chosen on the BookOptions step.
+  async function generateWithOptions({ photos, title, context, vibe, style, perspective, stylize }) {
     try {
       const previewDataUrls = photos // JPEG data URLs
       const photosBase64 = photos.map((d) => d.replace(/^data:[^,]+,/, ''))
       const payload = buildPayload({
         photosBase64,
-        vibe: VIBES[0],
-        stylizeImages: true,
-        style: STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0],
-        title: memory.title,
-        context: '',
-        perspective: PERSPECTIVES[0].code,
+        vibe,
+        stylizeImages: stylize,
+        style,
+        title: title || 'My photos',
+        context,
+        perspective,
       })
       await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl() })
     } catch (err) {
       setError(err.message || String(err))
       setView('error')
     }
-  }
-
-  // Photos tab → "Create photobook" on a selection of library photos. They're
-  // already JPEG data URLs, so they slot straight into the memory flow.
-  function createPhotobookFromPhotos(photoUrls, title) {
-    if (!photoUrls || !photoUrls.length) return
-    generateFromMemory({ title: title || 'My photos', photos: photoUrls })
   }
 
   if (view === 'loading') return <Loader />
@@ -147,6 +154,18 @@ export default function App() {
       <ErrorBoundary onReset={reset}>
         <StoryViewer book={book} onExit={reset} savedId={savedId} onSaved={setSavedId} />
       </ErrorBoundary>
+    )
+  }
+
+  // Options step (mood / style / context) before generating from a selection.
+  if (view === 'bookOptions' && pending) {
+    return (
+      <BookOptions
+        photos={pending.photos}
+        title={pending.title}
+        onGenerate={generateWithOptions}
+        onBack={() => setView(pending.from || 'home')}
+      />
     )
   }
 
