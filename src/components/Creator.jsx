@@ -5,7 +5,7 @@ import { readPhotoMeta, summarizePhotoMeta } from '../metadata'
 
 let uid = 0
 
-export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, onOpenMemories }) {
+export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, onOpenMemories, onOpenPhotos }) {
   const [photos, setPhotos] = useState([]) // { id, file, url }
   const [title, setTitle] = useState('')
   const [context, setContext] = useState('')
@@ -118,6 +118,9 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
     <div className="creator">
       <header className="creator-head">
         <div className="creator-nav">
+          <button type="button" className="nav-link" onClick={onOpenPhotos}>
+            🖼️ Photos
+          </button>
           <button type="button" className="nav-link" onClick={onOpenMemories}>
             ✨ Memories
           </button>

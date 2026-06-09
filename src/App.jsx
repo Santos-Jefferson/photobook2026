@@ -171,6 +171,7 @@ export default function App() {
         buildPayload={buildPayload}
         onOpenSaved={() => setView('saved')}
         onOpenMemories={() => setView('memories')}
+        onOpenPhotos={() => setView('photos')}
       />
       <BottomNav active="create" onNavigate={setView} />
     </>
