@@ -1,0 +1,217 @@
+h1. Photobook — Design, Architecture & UI
+
+{info:title=One-liner}
+Turn a user's library photos — or a single *Memory* — into a swipeable, AI‑narrated photo‑book story. Mobile‑first, built on the Synchronoss *Genius Narration API*, designed to feel like a natural extension of *Capsyl* (Memories → Photobook).
+{info}
+
+{toc:maxLevel=2|minLevel=2}
+
+----
+
+h2. 1. Product overview
+
+Photobook takes a handful of photos and weaves them into an illustrated, narrated story the user can swipe through, translate, narrate aloud, edit photo‑by‑photo, save, and share.
+
+*Core journey:* pick photos (or open a Memory) → set the mood (vibe, art style, narrator perspective) → the Genius API returns a titled story → swipe through a full‑screen viewer with narration, translation, and per‑photo editing → save or share.
+
+||Pillar||What it delivers||
+|Generate|Up to 5 photos + vibe + image style + narrator perspective; EXIF date/place folded into the prompt. Returns opening · per‑photo caption + narrative · closing, with stylized images.|
+|Memories|Capsyl‑style gallery. Group your own photos into a Memory (title + cluster), then create a photobook in one tap, with a baked display‑font cover.|
+|Narration|Neural TTS with selectable language and voice (gender) via a touch‑friendly bottom sheet.|
+|Translate|Translate the whole story on the fly (internal LLM).|
+|Perspective|Retell as AI storyteller / me / child / friend / parent (internal LLM).|
+|Photo Chat|Per‑photo edits in natural language, style presets, memory actions, and Genius greeting cards.|
+|Saved|Local library of finished photobooks (IndexedDB), reopenable any time.|
+|Export & share|PDF, self‑contained HTML (offline narration), WhatsApp, Instagram cover.|
+
+----
+
+h2. 2. Design principles
+
+* *Mobile‑first* — the primary surface is a phone. Full‑bleed imagery, thumb‑reachable controls, bottom sheets instead of cramped top bars, safe‑area aware CTAs, and a Capsyl‑style bottom navigation.
+* *Feels like Capsyl* — Memories as a grid of portrait cards (cover image + display‑font title + date range), cyan accent ({{#0096d5}}), familiar navigation.
+* *One tap to delight* — a Memory becomes a finished, narrated story in a single action.
+* *Progressive, resilient* — works in Demo mode with no backend; gracefully falls back (browser TTS when the narration server is absent; original photo when no styled image returns).
+* *Privacy by default* — photos and text only leave the browser to reach the configured Genius API and our own {{/api/*}} endpoints; saved books and memories live locally in IndexedDB.
+
+h3. Visual language
+
+||Token||Value||Usage||
+|Accent (Capsyl cyan)|#0096d5 → #00c9e8|Primary actions, active nav, memory theme|
+|Surface|#ffffff on soft blue gradient|Cards, sheets|
+|Text|#16202c / muted #64748b|Headings / secondary|
+|Nav bar (mobile)|#232c3a (navy)|Capsyl‑style bottom navigation|
+|Display font (covers)|Serif / Trebuchet, uppercase variants|Memory titles baked over photos|
+
+----
+
+h2. 3. System architecture
+
+{noformat}
+┌──────────────────────────── Browser (React SPA) ────────────────────────────┐
+│                                                                              │
+│  Creator ──────────┐         Memories ───────┐        SavedBooks            │
+│  (upload, vibe,     │         (user clusters, │        (IndexedDB library)  │
+│   style, EXIF)      │          New Memory)    │                             │
+│         │           └───────────────┬─────────┘                             │
+│         │  buildPayload             │ generateFromMemory                     │
+│         ▼                           ▼                                        │
+│   ┌───────────────── App.jsx (view state machine) ─────────────────┐        │
+│   │   handleGenerate → normalizeBook → perspective rewrite          │        │
+│   └───────────────────────────┬────────────────────────────────────┘        │
+│                               ▼                                              │
+│                         StoryViewer                                         │
+│        buildSlides · Ken Burns · narration · translation · PhotoChat         │
+│           │            │             │            │           │              │
+└───────────┼────────────┼─────────────┼────────────┼───────────┼──────────────┘
+            │            │             │            │           │
+            ▼            ▼             ▼            ▼           ▼
+   Genius /photobook  /api/narrate  /api/translate /api/perspective  Genius
+   (generate + style)  (msedge-tts)  (Qwen)        (Qwen)        photo-chat /
+                                                                 greeting-card
+{noformat}
+
+h3. Tech stack
+
+* *Frontend:* React 18 + Vite 5, hand‑written CSS. Navigation is a small {{view}} state machine in {{App.jsx}} (no router).
+* *Backend:* a tiny Node {{http}} server ({{server/index.js}}) that serves the built SPA *and* the {{/api/*}} endpoints. The same handlers are exposed as *Vercel serverless functions* ({{api/*}}), sharing {{lib/narrate.js}}. Single container on Kubernetes.
+* *AI / external:* *Genius Narration API* (photobook, photo‑chat, greeting cards, image stylization); *internal LLM (Qwen)* (translate, perspective, rewrite); *msedge‑tts* (neural narration).
+* *Browser libs:* {{exifr}} (EXIF/GPS), {{jspdf}} + {{html2canvas}} (PDF / IG cover).
+* *Storage:* IndexedDB (saved books, user memories) + localStorage (API settings).
+
+h3. Generation data flow
+
+# {{Creator}} converts each photo to EXIF‑oriented, capped JPEG base64 and extracts date/place (GPS reverse‑geocoded best‑effort).
+# {{buildPayload}} assembles {{{ photos, vibe, style, stylize_images, title, context, perspective }}} and POSTs it to the Genius *photobook* endpoint (Bearer auth).
+# {{normalizeBook}} unwraps the response and flags truncation; uploaded photos are kept as fallbacks.
+# The story is optionally *retold in the chosen perspective* via the internal LLM.
+# {{StoryViewer}} renders slides; narration, translation and per‑photo edits are fetched on demand.
+
+h3. Endpoints
+
+||Method · Route||Purpose||Backed by||
+|POST /v1/genius/photobook|Generate a story from photos|Genius API|
+|POST /v1/genius/photo-chat/analyze · message · ask|Per‑photo analyze / edit / Q&A|Genius API|
+|POST /v1/genius/greeting-card|Greeting card (headline/message/closing + image)|Genius API|
+|POST /api/narrate|TTS audio for narration|msedge‑tts|
+|POST /api/translate|Translate story text|internal LLM|
+|POST /api/perspective|Retell in a narrator POV|internal LLM|
+|POST /api/rewrite|Free‑form rewrite (memory actions)|internal LLM|
+|GET /healthz|Liveness/readiness probe|—|
+
+----
+
+h2. 4. UI mockups (wireframes)
+
+h3. 4.1 Memories gallery (Capsyl‑style)
+
+{noformat}
+┌───────────────────────────────┐
+│ ‹ Back     Memories        (3) │
+│ Group photos from one moment…  │
+│                                │
+│ ┌─────────┐ ┌─────────────────┐│
+│ │   ＋     │ │▓▓▓▓▓▓▓▓▓▓▓ mine ││
+│ │  New    │ │▓ photo ▓▓▓▓▓▓▓▓▓ ││
+│ │ memory  │ │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓🗑 ││
+│ │         │ │  Sofia's Bday    ││
+│ │         │ │  6 photos · Jun  ││
+│ └─────────┘ └─────────────────┘│
+│ ┌─────────────────┐            │
+│ │▓ Lake trip ▓▓▓▓ │  …         │
+│ └─────────────────┘            │
+│                                │
+│ [🖼 Create] [✨ Memories] [📚]  │  ← mobile bottom nav
+└───────────────────────────────┘
+{noformat}
+
+Portrait cards (4:5), cover photo + title + "N photos · date". A "New memory" tile leads to a title + multi‑photo upload form.
+
+h3. 4.2 Creator (upload + options)
+
+{noformat}
+┌───────────────────────────────┐
+│  [✨ Memories]  [📚 Saved]      │
+│        ● Photobook             │
+│  Pick a few photos…            │
+│ ┌───────────────────────────┐  │
+│ │  Your photos        3/5    │  │
+│ │  [▢][▢][▢][＋]             │  │
+│ └───────────────────────────┘  │
+│  Title […]  Context […]        │
+│  Vibe (▾)   Style (▾)          │
+│  Perspective (▾)  ☑ Stylize    │
+│  ☑ Use photo date & place      │
+│  [ ✨ Start from a Memory ]     │
+│  ┌─────────────────────────┐   │
+│  │   Make my photo book (3) │  │  ← fixed CTA (above bottom nav)
+│  └─────────────────────────┘   │
+└───────────────────────────────┘
+{noformat}
+
+h3. 4.3 Story viewer
+
+{noformat}
+┌───────────────────────────────┐
+│ ♡ Save                ×  ⤓Share│
+│ ▆▆▆▆ ▆▆ ▁▁ ▁▁ ▁▁  (progress)   │
+│                                │
+│        full‑bleed styled       │
+│            photo               │
+│                                │
+│   “Hands linked, hearts whole.”│
+│   We arrived as the mist…      │
+│                          ✦ Edit│
+│ [▶ Narrate] [🌐 EN · Female]   │  ← narration bar (bottom-left)
+└───────────────────────────────┘
+   tap‑left ◀           ▶ tap‑right
+{noformat}
+
+Narration controls open a bottom sheet:
+
+{noformat}
+        ┌──────── Narration ────────┐
+        │ LANGUAGE                   │
+        │ [English•][Português][Esp]│
+        │ VOICE                      │
+        │ [Female•][Male]            │
+        │           [   Done   ]     │
+        └────────────────────────────┘
+{noformat}
+
+h3. 4.4 Photo Chat (per‑photo edit)
+
+{noformat}
+┌──────── Edit this photo ───────┐
+│ [Child's POV][Funnier][More…]  │  ← memory actions
+│ [Translate ▾]  [✨ Greeting]    │
+│ ───────────────────────────────│
+│ you: make it watercolor        │
+│ ai:  ✓ applied (Watercolor)    │
+│      [Use as caption][…narr.]  │
+│ ───────────────────────────────│
+│ (style ▾) [Apply]  type…  [Send]│
+└────────────────────────────────┘
+{noformat}
+
+----
+
+h2. 5. Storage model
+
+||Store||Type||Contents||
+|{{photobook}} (meta + books)|IndexedDB|Saved photobooks — small meta for the grid + full serialized book (images inline as base64)|
+|{{photobook_memories}}|IndexedDB|User‑created memories (title + photos as JPEG data URLs)|
+|{{photobook.apiUrl / apiKey}}|localStorage|API settings, runtime‑overridable from the Creator|
+
+----
+
+h2. 6. Roadmap
+
+* Native Capsyl *Memories* integration — pull real Memory clusters instead of uploading.
+* Mobile packaging — installable *PWA* ("Add to Home Screen") and/or a thin *Capacitor* Android shell over the deployed URL ({{.apk}}).
+* Richer greeting‑card composition; additional export targets.
+* Server‑side persistence and premium TTS voices (SLA).
+
+{tip:title=Status}
+MVP complete: generation, Memories, narration/translation/perspective, Photo Chat + greeting cards, Saved library, exports, and a mobile‑optimized UI.
+{tip}
