@@ -3,6 +3,7 @@ import { addPhotos } from '../photoStore'
 import { listMemories } from '../memoryStore'
 import { listSavedBooks } from '../bookStorage'
 import { fileToOrientedBase64 } from '../api'
+import { readPhotoMeta, metaToStored } from '../metadata'
 
 const NAME_KEY = 'pb_display_name'
 
@@ -21,8 +22,14 @@ export default function TopBar({ onNavigate, onUploaded }) {
     if (!incoming.length) return
     setBusy(true)
     try {
-      const b64s = await Promise.all(incoming.map((f) => fileToOrientedBase64(f)))
-      await addPhotos(b64s.map((b) => 'data:image/jpeg;base64,' + b))
+      const items = await Promise.all(
+        incoming.map(async (f) => {
+          const meta = metaToStored(await readPhotoMeta(f))
+          const b64 = await fileToOrientedBase64(f)
+          return { url: 'data:image/jpeg;base64,' + b64, meta }
+        }),
+      )
+      await addPhotos(items)
       onUploaded && onUploaded()
       onNavigate && onNavigate('photos')
     } finally {

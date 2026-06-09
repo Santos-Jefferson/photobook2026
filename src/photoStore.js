@@ -45,20 +45,25 @@ export async function listPhotos() {
   }
 }
 
-// Add several photos at once (data URLs). Returns the created records.
-export async function addPhotos(urls) {
+// Add several photos at once. Each item is `{ url, meta }` (meta from
+// metaToStored — date/GPS), or a bare url string. Returns the created records.
+export async function addPhotos(items) {
   const db = await openDb()
   try {
     const t = db.transaction(STORE, 'readwrite')
     const store = t.objectStore(STORE)
     const now = Date.now()
-    const records = (urls || []).map((url, i) => ({
-      id: 'ph_' + (now + i).toString(36) + Math.random().toString(36).slice(2, 7),
-      url,
-      favorite: false,
-      // Offset so a batch keeps its picked order (newest-first listing).
-      createdAt: now + i,
-    }))
+    const records = (items || []).map((item, i) => {
+      const { url, meta } = typeof item === 'string' ? { url: item, meta: null } : item
+      return {
+        id: 'ph_' + (now + i).toString(36) + Math.random().toString(36).slice(2, 7),
+        url,
+        meta: meta || null,
+        favorite: false,
+        // Offset so a batch keeps its picked order (newest-first listing).
+        createdAt: now + i,
+      }
+    })
     records.forEach((r) => store.put(r))
     await txDone(t)
     return records

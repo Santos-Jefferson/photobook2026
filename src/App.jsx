@@ -111,8 +111,12 @@ export default function App() {
   // Both create flows (a Memory or a Photos selection) funnel here: validate the
   // 2–5 rule, then show the options step (mood / style / context) before
   // generating, like the dedicated creator page.
-  function startBook(photoUrls, title, from) {
-    const photos = (photoUrls || []).slice(0, MAX_PHOTOS)
+  // `photoItems` is an array of { url, meta } (or bare url strings). meta carries
+  // the stored EXIF (date/GPS) so the options step can add date/location context.
+  function startBook(photoItems, title, from) {
+    const photos = (photoItems || [])
+      .map((p) => (typeof p === 'string' ? { url: p, meta: null } : { url: p.url, meta: p.meta || null }))
+      .slice(0, MAX_PHOTOS)
     if (photos.length < MIN_PHOTOS) {
       window.alert(`A photobook needs at least ${MIN_PHOTOS} photos. Add one more and try again.`)
       return
@@ -123,18 +127,20 @@ export default function App() {
   }
 
   function generateFromMemory(memory) {
-    startBook(memory.photos, memory.title, 'memories')
+    const items = (memory.photos || []).map((url, i) => ({ url, meta: (memory.metas && memory.metas[i]) || null }))
+    startBook(items, memory.title, 'memories')
   }
 
-  function createPhotobookFromPhotos(photoUrls, title) {
-    startBook(photoUrls, title, 'photos')
+  function createPhotobookFromPhotos(photoItems, title) {
+    startBook(photoItems, title, 'photos')
   }
 
   // Run generation with the photos + the options chosen on the BookOptions step.
   async function generateWithOptions({ photos, title, context, vibe, style, perspective, stylize, bedtime }) {
     try {
-      const previewDataUrls = photos // JPEG data URLs
-      const photosBase64 = photos.map((d) => d.replace(/^data:[^,]+,/, ''))
+      const urls = photos.map((p) => (typeof p === 'string' ? p : p.url))
+      const previewDataUrls = urls // JPEG data URLs
+      const photosBase64 = urls.map((d) => d.replace(/^data:[^,]+,/, ''))
       const payload = buildPayload({
         photosBase64,
         vibe,

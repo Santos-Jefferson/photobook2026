@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listMemories, saveMemory, deleteMemory } from '../memoryStore'
 import { fileToOrientedBase64 } from '../api'
+import { readPhotoMeta, metaToStored } from '../metadata'
 import { MIN_PHOTOS, MAX_PHOTOS } from '../config'
 
 const MAX_MEMORY_PHOTOS = 8
@@ -140,6 +141,7 @@ function MemoryDetail({ memory, onBack, onCreate }) {
 function NewMemory({ onCancel, onSaved }) {
   const [title, setTitle] = useState('')
   const [photos, setPhotos] = useState([]) // data URLs
+  const [metas, setMetas] = useState([]) // stored EXIF, aligned to photos
   const [busy, setBusy] = useState(false)
   const fileInput = useRef(null)
 
@@ -149,8 +151,15 @@ function NewMemory({ onCancel, onSaved }) {
     setBusy(true)
     try {
       const room = MAX_MEMORY_PHOTOS - photos.length
-      const b64s = await Promise.all(incoming.slice(0, room).map((f) => fileToOrientedBase64(f)))
-      setPhotos((prev) => [...prev, ...b64s.map((b) => 'data:image/jpeg;base64,' + b)])
+      const added = await Promise.all(
+        incoming.slice(0, room).map(async (f) => {
+          const meta = metaToStored(await readPhotoMeta(f))
+          const b64 = await fileToOrientedBase64(f)
+          return { url: 'data:image/jpeg;base64,' + b64, meta }
+        }),
+      )
+      setPhotos((prev) => [...prev, ...added.map((a) => a.url)])
+      setMetas((prev) => [...prev, ...added.map((a) => a.meta)])
     } finally {
       setBusy(false)
     }
@@ -160,7 +169,7 @@ function NewMemory({ onCancel, onSaved }) {
     if (!photos.length || busy) return
     setBusy(true)
     try {
-      await saveMemory({ title: title.trim() || 'My memory', photos })
+      await saveMemory({ title: title.trim() || 'My memory', photos, metas })
       onSaved()
     } finally {
       setBusy(false)
@@ -192,7 +201,13 @@ function NewMemory({ onCancel, onSaved }) {
         {photos.map((p, i) => (
           <div key={i} className="memory-new-thumb">
             <img src={p} alt={`Photo ${i + 1}`} />
-            <button className="memory-new-remove" onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}>
+            <button
+              className="memory-new-remove"
+              onClick={() => {
+                setPhotos((prev) => prev.filter((_, j) => j !== i))
+                setMetas((prev) => prev.filter((_, j) => j !== i))
+              }}
+            >
               ×
             </button>
           </div>

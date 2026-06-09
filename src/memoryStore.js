@@ -45,11 +45,12 @@ export async function listMemories() {
   }
 }
 
-export async function saveMemory({ title, photos }) {
+export async function saveMemory({ title, photos, metas }) {
   const id = 'mem_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
   const createdAt = Date.now()
   const dateRange = new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  const record = { id, title: title || 'My memory', photos: photos || [], dateRange, createdAt, isUser: true }
+  // `metas` (stored EXIF, aligned to photos) carries date/GPS for richer context.
+  const record = { id, title: title || 'My memory', photos: photos || [], metas: metas || [], dateRange, createdAt, isUser: true }
   const db = await openDb()
   try {
     const t = db.transaction(STORE, 'readwrite')

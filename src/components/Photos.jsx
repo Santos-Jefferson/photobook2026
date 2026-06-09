@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listPhotos, addPhotos, setFavorite, deletePhotos, updatePhotoImage } from '../photoStore'
 import { fileToOrientedBase64 } from '../api'
+import { readPhotoMeta, metaToStored } from '../metadata'
 import { MIN_PHOTOS, MAX_PHOTOS } from '../config'
 import PhotoChat from './PhotoChat'
 
@@ -99,8 +100,16 @@ export default function Photos({ onBack, onCreatePhotobook }) {
     if (!incoming.length) return
     setBusy(true)
     try {
-      const b64s = await Promise.all(incoming.map((f) => fileToOrientedBase64(f)))
-      await addPhotos(b64s.map((b) => 'data:image/jpeg;base64,' + b))
+      // Read EXIF (date/GPS) from the original file BEFORE re-encoding, which
+      // strips it — that's how we keep date/location context for generation.
+      const items = await Promise.all(
+        incoming.map(async (f) => {
+          const meta = metaToStored(await readPhotoMeta(f))
+          const b64 = await fileToOrientedBase64(f)
+          return { url: 'data:image/jpeg;base64,' + b64, meta }
+        }),
+      )
+      await addPhotos(items)
       await refresh()
     } finally {
       setBusy(false)
@@ -271,7 +280,7 @@ export default function Photos({ onBack, onCreatePhotobook }) {
           <button
             className="photos-action primary"
             disabled={!bookReady}
-            onClick={() => onCreatePhotobook(selectedPhotos.map((p) => p.url), 'My photos')}
+            onClick={() => onCreatePhotobook(selectedPhotos.map((p) => ({ url: p.url, meta: p.meta })), 'My photos')}
           >
             <Icon name="book" />
             <span>Create photobook</span>

@@ -96,3 +96,21 @@ export async function summarizePhotoMeta(metas) {
   const summary = parts.length ? parts.join(' ') + '.' : ''
   return { summary, place, hasData: Boolean(summary) }
 }
+
+// Compact, IndexedDB-friendly form of a photo's meta (date as a timestamp).
+export function metaToStored(meta) {
+  if (!meta) return null
+  const t = meta.date instanceof Date ? meta.date.getTime() : typeof meta.date === 'number' ? meta.date : null
+  const lat = typeof meta.latitude === 'number' ? meta.latitude : null
+  const lon = typeof meta.longitude === 'number' ? meta.longitude : null
+  if (t == null && lat == null && lon == null) return null
+  return { t, lat, lon }
+}
+
+// Summarize a list of stored metas (from metaToStored) into the context line.
+export async function summarizeStoredMetas(stored) {
+  const metas = (stored || []).map((s) =>
+    s ? { date: s.t ? new Date(s.t) : null, latitude: s.lat, longitude: s.lon } : {},
+  )
+  return summarizePhotoMeta(metas)
+}

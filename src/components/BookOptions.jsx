@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { VIBES, STYLES, PERSPECTIVES, MIN_PHOTOS, MAX_PHOTOS } from '../config'
 import { analyzeAlbum } from '../insightsClient'
+import { summarizeStoredMetas } from '../metadata'
+
+const urlOf = (p) => (typeof p === 'string' ? p : p.url)
 
 // The "set the mood" step shown after photos are chosen (from a Photos selection
 // or a Memory) and before generating — the same controls the dedicated creator
-// page had: title, context, vibe, art style, narrator perspective, stylize.
+// page had: title, context, vibe, art style, narrator perspective, stylize, and
+// the date/location context pulled from the photos' EXIF.
 export default function BookOptions({ photos: initialPhotos, title: initialTitle, onGenerate, onBack }) {
   const [photos, setPhotos] = useState(initialPhotos || [])
+  // EXIF-derived date/place context for the chosen photos.
+  const [photoMeta, setPhotoMeta] = useState({ summary: '', place: '', hasData: false })
+  const [includeMeta, setIncludeMeta] = useState(true)
   const [title, setTitle] = useState(initialTitle || '')
   const [context, setContext] = useState('')
   const [vibe, setVibe] = useState(VIBES[0])
@@ -26,7 +33,7 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
   async function analyze() {
     setAnalyzing(true)
     try {
-      const r = await analyzeAlbum(initialPhotos)
+      const r = await analyzeAlbum((initialPhotos || []).map(urlOf))
       if (!r) return
       setInsights(r)
       if (r.title && !titleTouched.current) setTitle(r.title)
@@ -39,6 +46,10 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
   // Run once when the screen opens with the chosen photos.
   useEffect(() => {
     analyze()
+    // EXIF (date/place) summary from the chosen photos' stored meta.
+    summarizeStoredMetas((initialPhotos || []).map((p) => (typeof p === 'string' ? null : p.meta)))
+      .then(setPhotoMeta)
+      .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -61,7 +72,11 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
     if (!canSubmit) return
     setBusy(true)
     try {
-      await onGenerate({ photos, title: title.trim(), context: context.trim(), vibe, style, perspective, stylize, bedtime })
+      // Fold the EXIF date/place line into the context when kept.
+      const base = context.trim()
+      const fullContext =
+        includeMeta && photoMeta.summary ? [base, photoMeta.summary].filter(Boolean).join('\n\n') : base
+      await onGenerate({ photos, title: title.trim(), context: fullContext, vibe, style, perspective, stylize, bedtime })
     } finally {
       setBusy(false)
     }
@@ -88,9 +103,9 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
           </span>
         </div>
         <div className="thumbs">
-          {photos.map((src, i) => (
+          {photos.map((p, i) => (
             <figure key={i} className="thumb">
-              <img src={src} alt={`Photo ${i + 1}`} />
+              <img src={urlOf(p)} alt={`Photo ${i + 1}`} />
               <span className="thumb-order">{i + 1}</span>
               {photos.length > MIN_PHOTOS && (
                 <button type="button" className="thumb-remove" aria-label="Remove photo" onClick={() => removeAt(i)}>
@@ -187,6 +202,15 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
             }}
           />
         </label>
+
+        {photoMeta.hasData && (
+          <label className="meta-hint">
+            <input type="checkbox" checked={includeMeta} onChange={(e) => setIncludeMeta(e.target.checked)} />
+            <span>
+              <strong>From your photos:</strong> {photoMeta.summary}
+            </span>
+          </label>
+        )}
 
         <div className="field-row">
           <label className="field">
