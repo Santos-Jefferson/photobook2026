@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
 import { downloadStoryHtml } from '../share'
-import { downloadStoryPdf, shareToWhatsApp, shareToInstagram } from '../export'
+import { downloadStoryPdf, downloadStoryVideo, shareToWhatsApp, shareToInstagram } from '../export'
 import { useNarration, NARRATION_LANGS, VOICE_OPTIONS } from '../narration'
 import { translateBook } from '../translateClient'
 import { saveBook } from '../bookStorage'
@@ -117,6 +117,7 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
 
   const exportOptions = [
     { key: 'pdf', label: 'Download PDF', icon: '📄', run: () => downloadStoryPdf(displayBook) },
+    { key: 'video', label: 'Download video', icon: '🎬', run: () => downloadStoryVideo(displayBook) },
     {
       key: 'html',
       // Self-contained .html (collage + offline narration in the current voice).

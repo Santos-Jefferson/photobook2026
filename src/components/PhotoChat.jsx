@@ -7,6 +7,8 @@ import { NARRATION_LANGS } from '../narration'
 // Memory-action chips: quick AI transforms of the current caption/narrative.
 const MEMORY_ACTIONS = [
   { label: "Child's POV", instruction: "Rewrite from a young child's point of view — simple words, full of wonder", src: 'story' },
+  { label: "Parent's POV", instruction: "Rewrite from a loving parent's point of view, warm and proud", src: 'story' },
+  { label: "Friend's POV", instruction: "Rewrite from a close friend's point of view, casual and affectionate", src: 'story' },
   { label: 'Funnier', instruction: 'Make it noticeably funnier and more playful, keeping it tasteful', src: 'caption' },
   { label: 'More emotional', instruction: 'Make it more emotional, heartfelt and moving', src: 'story' },
 ]
@@ -181,19 +183,27 @@ export default function PhotoChat({
     const holidayLabel = (HOLIDAYS.find((h) => h.key === holiday) || {}).label || holiday
     setThread((t) => [...t, { role: 'user', text: `Greeting card · ${holidayLabel} · ${tone}` }])
     try {
-      const context = [storyContext, curCaption(), curNarrative()].filter(Boolean).join(' — ').slice(0, 500)
-      const r = await generateGreetingCard({ holiday, tone, photo: photoRef.current, recipient, context })
+      const who = recipient.trim()
+      // Reinforce the recipient in the context too — the model sometimes drops it.
+      const context = [who ? `For ${who}.` : '', storyContext, curCaption(), curNarrative()]
+        .filter(Boolean)
+        .join(' — ')
+        .slice(0, 500)
+      const r = await generateGreetingCard({ holiday, tone, photo: photoRef.current, recipient: who, context })
+      let headline = r.headline || ''
+      let message = r.message || ''
+      const closing = r.closing || ''
+      // Fallback: make sure the recipient's name actually appears on the card.
+      if (who) {
+        const hay = `${headline}\n${message}\n${closing}`.toLowerCase()
+        if (!hay.includes(who.toLowerCase())) {
+          if (headline && !/^(dear|to)\b/i.test(headline)) headline = `To ${who}`
+          else message = `Dear ${who},\n${message}`.trim()
+        }
+      }
       setThread((t) => [
         ...t,
-        {
-          role: 'assistant',
-          card: {
-            headline: r.headline || '',
-            message: r.message || '',
-            closing: r.closing || '',
-            image: r.styled_image_b64 || '',
-          },
-        },
+        { role: 'assistant', card: { headline, message, closing, image: r.styled_image_b64 || '' } },
       ])
     } catch (e) {
       setErr(e.message || String(e))
@@ -202,6 +212,8 @@ export default function PhotoChat({
       setBusy(false)
     }
   }
+
+  const suggestions = (analysis && analysis.suggestions) || []
 
   return (
     <div className="chat" onClick={(e) => e.stopPropagation()}>
@@ -295,6 +307,18 @@ export default function PhotoChat({
             <button className="card-generate" disabled={busy} onClick={runGreetingCard}>
               Generate card
             </button>
+          </div>
+        )}
+
+        {/* Analyze-API suggestions (loaded in the background; non-blocking). */}
+        {!thread.length && suggestions.length > 0 && (
+          <div className="chat-suggestions">
+            <span className="chat-suggest-label">Suggestions</span>
+            {suggestions.map((s, i) => (
+              <button key={i} className="chip" disabled={busy} onClick={() => send(s)}>
+                {s}
+              </button>
+            ))}
           </div>
         )}
 

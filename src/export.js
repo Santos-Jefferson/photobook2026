@@ -69,6 +69,14 @@ export async function buildStoryPdfBlob(book) {
     return doc.splitTextToSize(String(text || ''), maxW)
   }
 
+  // Cover images for the opening/closing pages so they aren't text-only: the
+  // baked memory cover when present, else the first / last story photo.
+  const photoSlides = slides.filter((s) => s.type === 'photo' && (s.styled || s.image || s.original))
+  const openingSrc = (book && book.__cover) || (photoSlides[0] && (photoSlides[0].styled || photoSlides[0].image))
+  const closingSrc =
+    (photoSlides[photoSlides.length - 1] && (photoSlides[photoSlides.length - 1].styled || photoSlides[photoSlides.length - 1].image)) ||
+    openingSrc
+
   let first = true
   for (const s of slides) {
     if (!first) doc.addPage()
@@ -77,24 +85,40 @@ export async function buildStoryPdfBlob(book) {
     if (s.type === 'opening' || s.type === 'closing') {
       doc.setFillColor(247, 250, 252)
       doc.rect(0, 0, W, H, 'F')
-      let y = s.type === 'opening' ? 150 : 170
+      let y = M
+      const coverImg = await toJpeg(s.type === 'opening' ? openingSrc : closingSrc)
+      if (coverImg) {
+        const boxW = W - 2 * M
+        const boxH = H * 0.46
+        const r = Math.min(boxW / coverImg.w, boxH / coverImg.h)
+        const w = coverImg.w * r
+        const h = coverImg.h * r
+        try {
+          doc.addImage(coverImg.dataUrl, 'JPEG', (W - w) / 2, y, w, h)
+        } catch {
+          /* skip a bad image */
+        }
+        y += h + 34
+      } else {
+        y = s.type === 'opening' ? 150 : 170
+      }
       doc.setTextColor(...accent)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(12)
       doc.text((s.type === 'opening' ? s.vibe || '' : 'the end').toUpperCase(), W / 2, y, { align: 'center' })
       y += 36
       doc.setTextColor(...ink)
-      doc.setFontSize(30)
-      for (const line of wrap(s.title, 30, W - 2 * M)) {
+      doc.setFontSize(28)
+      for (const line of wrap(s.title, 28, W - 2 * M)) {
         doc.text(line, W / 2, y, { align: 'center' })
-        y += 36
+        y += 34
       }
       y += 10
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(...muted)
-      for (const line of wrap(s.text, 14, W - 2 * M)) {
+      for (const line of wrap(s.text, 13, W - 2 * M)) {
         doc.text(line, W / 2, y, { align: 'center' })
-        y += 20
+        y += 19
       }
       continue
     }
@@ -113,7 +137,14 @@ export async function buildStoryPdfBlob(book) {
       y += 6
     }
 
-    const img = s.image ? await toJpeg(s.image) : null
+    // Prefer the stylized image; fall back to the original upload so a page is
+    // never blank.
+    let img = null
+    for (const cand of [s.styled, s.image, s.original]) {
+      if (!cand) continue
+      img = await toJpeg(cand)
+      if (img) break
+    }
     if (img) {
       const boxW = W - 2 * M
       const boxH = H - y - (s.narrative ? 150 : M) - 10
@@ -215,6 +246,131 @@ export async function buildCoverPngBlob(book) {
   return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'))
 }
 
+// ------------------------------------------------------------- video ---------
+
+// Render the story as a short slideshow video (one frame per slide with a soft
+// fade) using a canvas + MediaRecorder. Returns a Blob, or null when the browser
+// can't record (older Safari) so callers can fall back to the cover image.
+export async function buildStoryVideoBlob(book, { perSlideMs = 2000, size = 1080 } = {}) {
+  if (typeof MediaRecorder === 'undefined') return null
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  if (typeof canvas.captureStream !== 'function') return null
+  const ctx = canvas.getContext('2d')
+  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(
+    (m) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m),
+  )
+  if (!mime) return null
+
+  // Preload every slide's image up front (cover for opening/closing).
+  const slides = buildSlides(book)
+  const frames = []
+  for (const s of slides) {
+    const src = s.type === 'photo' ? s.styled || s.image || s.original : (book && book.__cover) || null
+    let img = null
+    if (src) {
+      try {
+        img = await loadImage(src)
+      } catch {
+        img = null
+      }
+    }
+    frames.push({ s, img })
+  }
+
+  const stream = canvas.captureStream(30)
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_500_000 })
+  const chunks = []
+  rec.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data)
+  const stopped = new Promise((res) => (rec.onstop = res))
+
+  const drawFrame = (frame, p) => {
+    const { s, img } = frame
+    ctx.fillStyle = '#0b1620'
+    ctx.fillRect(0, 0, size, size)
+    if (img) {
+      const r = Math.max(size / img.width, size / img.height)
+      const w = img.width * r
+      const h = img.height * r
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+    }
+    const scrim = ctx.createLinearGradient(0, size * 0.4, 0, size)
+    scrim.addColorStop(0, 'rgba(0,0,0,0)')
+    scrim.addColorStop(1, 'rgba(0,0,0,0.82)')
+    ctx.fillStyle = scrim
+    ctx.fillRect(0, 0, size, size)
+
+    const a = Math.min(1, p * 4) // quick fade-in
+    ctx.globalAlpha = a
+    ctx.fillStyle = '#fff'
+    ctx.textBaseline = 'alphabetic'
+    if (s.type === 'photo') {
+      drawWrapped(ctx, s.caption || '', 64, size - 220, size - 128, 56, '800 50px "Plus Jakarta Sans", Arial')
+      ctx.globalAlpha = a * 0.92
+      drawWrapped(ctx, trim(s.narrative, 160), 64, size - 130, size - 128, 34, '500 30px "Plus Jakarta Sans", Arial')
+    } else {
+      ctx.textAlign = 'center'
+      drawWrapped(ctx, s.title || '', size / 2, size - 170, size - 160, 70, '800 64px "Plus Jakarta Sans", Arial', 'center')
+      ctx.globalAlpha = a * 0.9
+      drawWrapped(ctx, trim(s.text, 140), size / 2, size - 80, size - 200, 34, '500 30px "Plus Jakarta Sans", Arial', 'center')
+      ctx.textAlign = 'left'
+    }
+    ctx.globalAlpha = 1
+  }
+
+  rec.start()
+  for (const frame of frames) {
+    const start = performance.now()
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => {
+      const tick = () => {
+        const elapsed = performance.now() - start
+        drawFrame(frame, Math.min(1, elapsed / perSlideMs))
+        if (elapsed >= perSlideMs) resolve()
+        else requestAnimationFrame(tick)
+      }
+      tick()
+    })
+  }
+  rec.stop()
+  await stopped
+  return chunks.length ? new Blob(chunks, { type: mime }) : null
+}
+
+function trim(s, n) {
+  const t = String(s || '').trim()
+  return t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t
+}
+
+function drawWrapped(ctx, text, x, yBottom, maxW, lineH, font, align) {
+  if (!text) return
+  ctx.font = font
+  if (align) ctx.textAlign = align
+  const words = String(text).split(/\s+/)
+  const lines = []
+  let line = ''
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line)
+      line = w
+    } else line = test
+  }
+  if (line) lines.push(line)
+  let y = yBottom - (lines.length - 1) * lineH
+  for (const l of lines) {
+    ctx.fillText(l, x, y)
+    y += lineH
+  }
+}
+
+export async function downloadStoryVideo(book) {
+  const blob = await buildStoryVideoBlob(book)
+  if (blob) triggerDownload(blob, slugify(book && book.title) + '.webm')
+  return !!blob
+}
+
 // ------------------------------------------------------------- sharing -------
 
 async function shareFiles(files, title, text) {
@@ -229,29 +385,42 @@ async function shareFiles(files, title, text) {
   return false
 }
 
-// WhatsApp: share the PDF via the native sheet (mobile); on desktop open
-// WhatsApp Web prefilled with a message.
+// Share the story as a slideshow video; if the browser can't record one, fall
+// back to the cover image so something visual is always shared.
+async function shareVideoOrCover(book, title, text) {
+  try {
+    const video = await buildStoryVideoBlob(book)
+    if (video) {
+      const file = new File([video], slugify(title) + '.webm', { type: video.type || 'video/webm' })
+      if (await shareFiles([file], title, text)) return true
+      triggerDownload(video, slugify(title) + '.webm')
+      return true
+    }
+  } catch {
+    /* fall through to the cover image */
+  }
+  const cover = await buildCoverPngBlob(book)
+  if (cover) {
+    const file = new File([cover], slugify(title) + '.png', { type: 'image/png' })
+    if (await shareFiles([file], title, text)) return true
+    triggerDownload(cover, slugify(title) + '.png')
+    return true
+  }
+  return false
+}
+
+// WhatsApp: share the story video via the native sheet (mobile); on desktop with
+// no share support, open WhatsApp Web prefilled with a message.
 export async function shareToWhatsApp(book) {
   const title = (book && book.title) || 'Our Story'
   const text = `${title} — a little photo story 📖`
-  try {
-    const blob = await buildStoryPdfBlob(book)
-    const file = new File([blob], slugify(title) + '.pdf', { type: 'application/pdf' })
-    if (await shareFiles([file], title, text)) return
-  } catch {
-    /* fall through */
-  }
+  if (await shareVideoOrCover(book, title, text)) return
   window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener')
 }
 
-// Instagram has no web post intent: share the cover image via the native sheet
-// (mobile → pick Instagram), or download it so the user can post it manually.
+// Instagram has no web post intent: share the story video (or cover image) via the
+// native sheet so the user can pick Instagram, or download it to post manually.
 export async function shareToInstagram(book) {
   const title = (book && book.title) || 'Our Story'
-  const blob = await buildCoverPngBlob(book)
-  if (blob) {
-    const file = new File([blob], slugify(title) + '.png', { type: 'image/png' })
-    if (await shareFiles([file], title, '')) return
-    triggerDownload(blob, slugify(title) + '.png')
-  }
+  await shareVideoOrCover(book, title, '')
 }

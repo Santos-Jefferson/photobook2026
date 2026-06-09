@@ -1981,3 +1981,17 @@ button {
   color: var(--muted);
   cursor: pointer;
 }
+
+/* Analyze-API suggestions label in the Photo Chat */
+.chat-suggest-label {
+  flex-basis: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.chat-suggestions {
+  margin-bottom: 10px;
+}
