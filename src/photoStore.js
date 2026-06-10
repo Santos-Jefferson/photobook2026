@@ -88,7 +88,8 @@ export async function setFavorite(id, favorite) {
   }
 }
 
-// Replace a photo's image (e.g. after editing it in the photo chat).
+// Replace a photo's image (e.g. after editing it in the photo chat). The first
+// edit stashes the untouched image in `original` so the edit can be reverted.
 export async function updatePhotoImage(id, url) {
   const db = await openDb()
   try {
@@ -96,7 +97,26 @@ export async function updatePhotoImage(id, url) {
     const store = t.objectStore(STORE)
     const rec = await reqDone(store.get(id))
     if (rec) {
+      if (!rec.original) rec.original = rec.url
       rec.url = url
+      store.put(rec)
+    }
+    await txDone(t)
+  } finally {
+    db.close()
+  }
+}
+
+// Restore a photo to its pre-edit original (clears the stash).
+export async function revertPhotoImage(id) {
+  const db = await openDb()
+  try {
+    const t = db.transaction(STORE, 'readwrite')
+    const store = t.objectStore(STORE)
+    const rec = await reqDone(store.get(id))
+    if (rec && rec.original) {
+      rec.url = rec.original
+      delete rec.original
       store.put(rec)
     }
     await txDone(t)

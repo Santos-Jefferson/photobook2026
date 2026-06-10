@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { listPhotos, addPhotos, setFavorite, deletePhotos, updatePhotoImage } from '../photoStore'
+import { listPhotos, addPhotos, setFavorite, deletePhotos, updatePhotoImage, revertPhotoImage } from '../photoStore'
 import { fileToOrientedBase64 } from '../api'
 import { readPhotoMeta, metaToStored } from '../metadata'
 import { MIN_PHOTOS, MAX_PHOTOS } from '../config'
@@ -168,8 +168,13 @@ export default function Photos({ onBack, onCreatePhotobook, initialFavOnly = fal
           setDetail(null)
           startSelect(live.id, `Pick ${MIN_PHOTOS - 1}–${MAX_PHOTOS - 1} more photos — a photobook uses ${MIN_PHOTOS}–${MAX_PHOTOS}.`)
         }}
+        canRevert={!!live.original}
         onImageEdited={async (url) => {
           await updatePhotoImage(live.id, url)
+          refresh()
+        }}
+        onRevertImage={async () => {
+          await revertPhotoImage(live.id)
           refresh()
         }}
       />
@@ -347,7 +352,7 @@ async function shareSelected(items) {
 // The maximized single-photo view: full-bleed photo, a top bar, a bottom
 // toolbar (add to album / favorite / share / info), and a prominent
 // "Chat or book" entry that opens the editor chat or starts a photobook.
-function PhotoDetail({ photo, onBack, onToggleFavorite, onDelete, onCreateBook, onImageEdited }) {
+function PhotoDetail({ photo, onBack, onToggleFavorite, onDelete, onCreateBook, onImageEdited, onRevertImage, canRevert }) {
   const [sheet, setSheet] = useState(false) // "Chat or book" chooser
   const [chat, setChat] = useState(false)
   const [info, setInfo] = useState(false)
@@ -456,8 +461,8 @@ function PhotoDetail({ photo, onBack, onToggleFavorite, onDelete, onCreateBook, 
             narrative=""
             storyContext=""
             standalone
-            canRevert={false}
-            onRevert={() => {}}
+            canRevert={canRevert}
+            onRevert={onRevertImage}
             onApplyImage={(b64) => {
               const url = b64 && b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64
               onImageEdited(url)
