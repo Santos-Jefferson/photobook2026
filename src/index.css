@@ -2545,7 +2545,7 @@ button {
   transform: translateX(-50%);
   width: 100%;
   max-width: var(--phone-w);
-  z-index: 95;
+  z-index: 200;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;

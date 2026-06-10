@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { addPhotos } from '../photoStore'
 import { listMemories } from '../memoryStore'
 import { listSavedBooks } from '../bookStorage'
@@ -87,17 +88,21 @@ export default function TopBar({ onNavigate, onUploaded }) {
         }}
       />
 
-      {search && <SearchOverlay onNavigate={onNavigate} onClose={() => setSearch(false)} />}
-      {profile && (
-        <ProfileSheet
-          name={name}
-          onSave={(v) => {
-            setName(v)
-            v ? localStorage.setItem(NAME_KEY, v) : localStorage.removeItem(NAME_KEY)
-          }}
-          onClose={() => setProfile(false)}
-        />
-      )}
+      {/* Overlays are portaled to <body> so the sticky top bar's stacking
+          context can't trap them behind the page content. */}
+      {search && createPortal(<SearchOverlay onNavigate={onNavigate} onClose={() => setSearch(false)} />, document.body)}
+      {profile &&
+        createPortal(
+          <ProfileSheet
+            name={name}
+            onSave={(v) => {
+              setName(v)
+              v ? localStorage.setItem(NAME_KEY, v) : localStorage.removeItem(NAME_KEY)
+            }}
+            onClose={() => setProfile(false)}
+          />,
+          document.body,
+        )}
     </header>
   )
 }
