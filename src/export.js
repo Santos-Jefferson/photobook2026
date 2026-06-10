@@ -25,6 +25,33 @@ function loadImage(src) {
   })
 }
 
+// Build a cover-fit collage of the story photos as a JPEG (data URL + dims),
+// matching the on-screen / HTML / video opening & closing covers. Returns null
+// if no image loads.
+async function buildCollageJpeg(srcs, W = 1200, H = 900) {
+  const imgs = []
+  for (const s of (srcs || []).slice(0, 9)) {
+    try {
+      imgs.push(await loadImage(s))
+    } catch {
+      /* skip an image that won't load */
+    }
+  }
+  if (!imgs.length) return null
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, W, H)
+  drawCollage(ctx, W, H, imgs)
+  try {
+    return { dataUrl: canvas.toDataURL('image/jpeg', 0.9), w: W, h: H }
+  } catch {
+    return null
+  }
+}
+
 // Decode an image source (data URL or http) to a JPEG data URL + dimensions.
 // Returns null if it can't be read (e.g. a CORS-tainted canvas).
 async function toJpeg(src) {
@@ -70,13 +97,12 @@ export async function buildStoryPdfBlob(book) {
     return doc.splitTextToSize(String(text || ''), maxW)
   }
 
-  // Cover images for the opening/closing pages so they aren't text-only: the
-  // baked memory cover when present, else the first / last story photo.
+  // Opening & closing pages show a collage of ALL the story photos — matching
+  // the on-screen, HTML and video covers (and avoiding a single cover image that
+  // duplicates the first/last page). Built once and reused for both.
   const photoSlides = slides.filter((s) => s.type === 'photo' && (s.styled || s.image || s.original))
-  const openingSrc = (book && book.__cover) || (photoSlides[0] && (photoSlides[0].styled || photoSlides[0].image))
-  const closingSrc =
-    (photoSlides[photoSlides.length - 1] && (photoSlides[photoSlides.length - 1].styled || photoSlides[photoSlides.length - 1].image)) ||
-    openingSrc
+  const photoSrcs = photoSlides.map((s) => s.styled || s.image || s.original)
+  const collageImg = await buildCollageJpeg(photoSrcs)
 
   let first = true
   for (const s of slides) {
@@ -87,7 +113,11 @@ export async function buildStoryPdfBlob(book) {
       doc.setFillColor(247, 250, 252)
       doc.rect(0, 0, W, H, 'F')
       let y = M
-      const coverImg = await toJpeg(s.type === 'opening' ? openingSrc : closingSrc)
+      // Same collage on both covers; fall back to the first/last photo only if
+      // the collage couldn't be built.
+      const coverImg =
+        collageImg ||
+        (await toJpeg(s.type === 'opening' ? photoSrcs[0] : photoSrcs[photoSrcs.length - 1] || photoSrcs[0]))
       if (coverImg) {
         const boxW = W - 2 * M
         const boxH = H * 0.46
@@ -418,21 +448,68 @@ function drawVideoFrame(ctx, W, H, frame, p, idx, total) {
   }
 
   const a = Math.min(1, p * 4) // quick fade-in
-  ctx.globalAlpha = a
   ctx.fillStyle = '#fff'
   ctx.textBaseline = 'alphabetic'
+  // Stack the lower (body) block bottom-anchored, then place the upper (heading)
+  // block just above it — so long text never overlaps the heading.
+  const bottomMargin = 150
+  const blockGap = 30
   if (s.type === 'photo') {
-    drawWrapped(ctx, s.caption || '', 64, H - 360, W - 128, 70, '800 60px "Plus Jakarta Sans", Arial')
+    const bodyFont = '500 36px "Plus Jakarta Sans", Arial'
+    const headFont = '800 60px "Plus Jakarta Sans", Arial'
+    const bodyLines = wrapLines(ctx, trim(s.narrative, 240), W - 128, bodyFont).slice(0, 5)
+    const headLines = wrapLines(ctx, s.caption || '', W - 128, headFont).slice(0, 3)
     ctx.globalAlpha = a * 0.92
-    drawWrapped(ctx, trim(s.narrative, 240), 64, H - 200, W - 128, 44, '500 36px "Plus Jakarta Sans", Arial')
+    const bodyTop = drawLinesUp(ctx, bodyLines, 64, H - bottomMargin, 44, bodyFont, 'left')
+    ctx.globalAlpha = a
+    drawLinesUp(ctx, headLines, 64, bodyTop - blockGap, 70, headFont, 'left')
   } else {
+    const bodyFont = '500 36px "Plus Jakarta Sans", Arial'
+    const headFont = '800 76px "Plus Jakarta Sans", Arial'
+    const bodyLines = wrapLines(ctx, trim(s.text, 200), W - 200, bodyFont).slice(0, 5)
+    const headLines = wrapLines(ctx, s.title || '', W - 160, headFont).slice(0, 3)
     ctx.textAlign = 'center'
-    drawWrapped(ctx, s.title || '', W / 2, H - 320, W - 160, 86, '800 76px "Plus Jakarta Sans", Arial', 'center')
     ctx.globalAlpha = a * 0.9
-    drawWrapped(ctx, trim(s.text, 200), W / 2, H - 190, W - 200, 44, '500 36px "Plus Jakarta Sans", Arial', 'center')
+    const bodyTop = drawLinesUp(ctx, bodyLines, W / 2, H - bottomMargin, 44, bodyFont, 'center')
+    ctx.globalAlpha = a
+    drawLinesUp(ctx, headLines, W / 2, bodyTop - blockGap - 6, 86, headFont, 'center')
     ctx.textAlign = 'left'
   }
   ctx.globalAlpha = 1
+}
+
+// Wrap text into lines that fit `maxW` for the given font.
+function wrapLines(ctx, text, maxW, font) {
+  ctx.font = font
+  const words = String(text || '')
+    .split(/\s+/)
+    .filter(Boolean)
+  const lines = []
+  let line = ''
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line)
+      line = w
+    } else line = test
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
+// Draw pre-wrapped lines ending at `bottomY` (growing upward). Returns the y of
+// the top line so a block can be stacked above it.
+function drawLinesUp(ctx, lines, x, bottomY, lineH, font, align) {
+  if (!lines.length) return bottomY
+  ctx.font = font
+  if (align) ctx.textAlign = align
+  const top = bottomY - (lines.length - 1) * lineH
+  let y = top
+  for (const l of lines) {
+    ctx.fillText(l, x, y)
+    y += lineH
+  }
+  return top - lineH * 0.8
 }
 
 // Tile the story photos to fill the frame (cover-fit per cell, thin white gaps),

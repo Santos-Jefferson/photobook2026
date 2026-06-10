@@ -67,9 +67,9 @@ const Icon = ({ name }) => {
 // Tapping a photo opens a maximized detail view (with a "Chat or book" entry);
 // the multi-select mode reveals an action bar whose primary action is
 // "Create photobook", alongside favorite / share / delete.
-export default function Photos({ onBack, onCreatePhotobook }) {
+export default function Photos({ onBack, onCreatePhotobook, initialFavOnly = false }) {
   const [photos, setPhotos] = useState(null) // null = loading
-  const [favOnly, setFavOnly] = useState(false)
+  const [favOnly, setFavOnly] = useState(initialFavOnly)
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [notice, setNotice] = useState('') // hint shown above the action bar

@@ -5,7 +5,7 @@ import { listMemories } from '../memoryStore'
 
 // The Home dashboard (Capsyl-style): a quick look at recent photos, favorites,
 // photobooks and memories. Everything taps through to its full tab.
-export default function Home({ refreshKey, onNavigate, onOpenBook, onCreate }) {
+export default function Home({ refreshKey, onNavigate, onOpenBook, onCreate, onSeeAllFavorites }) {
   const [photos, setPhotos] = useState([])
   const [books, setBooks] = useState([])
   const [memories, setMemories] = useState([])
@@ -57,7 +57,7 @@ export default function Home({ refreshKey, onNavigate, onOpenBook, onCreate }) {
       )}
 
       {favorites.length > 0 && (
-        <Section title="Recent Favorites" onSeeAll={() => onNavigate('photos')}>
+        <Section title="Recent Favorites" onSeeAll={onSeeAllFavorites}>
           <div className="home-grid">
             {favorites.map((p) => (
               <button key={p.id} className="home-cell" onClick={() => onNavigate('photos')}>

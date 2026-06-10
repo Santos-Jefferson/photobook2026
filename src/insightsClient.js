@@ -5,7 +5,7 @@
 //   • /api/rewrite      — LLM synthesis of the labeled summary
 // Best-effort: any failure returns null so the create flow is never blocked.
 
-import { askPhoto } from './photoChat'
+import { askPhoto, analyzePhoto } from './photoChat'
 import { rewriteTexts } from './memoryClient'
 
 const MAX_ANALYZE = 5
@@ -16,7 +16,18 @@ const DESCRIBE_Q =
 
 // Pull a free-text answer out of whatever shape /photo-chat/ask returns.
 function answerOf(r) {
-  return (r && (r.answer || r.text_response || r.response || r.text || r.message)) || ''
+  if (!r) return ''
+  if (typeof r === 'string') return r
+  return (
+    r.answer ||
+    r.text_response ||
+    r.response ||
+    r.text ||
+    r.message ||
+    r.result ||
+    (r.data && answerOf(r.data)) ||
+    ''
+  )
 }
 
 export async function analyzeAlbum(photoUrls) {
@@ -24,7 +35,7 @@ export async function analyzeAlbum(photoUrls) {
   if (!urls.length) return null
 
   // Phase A — a short vision description per photo (in parallel).
-  const descriptions = await Promise.all(
+  let descriptions = await Promise.all(
     urls.map(async (u, i) => {
       try {
         const r = await askPhoto({ photo: u, question: DESCRIBE_Q })
@@ -35,6 +46,25 @@ export async function analyzeAlbum(photoUrls) {
       }
     }),
   )
+
+  // Fallback: if the Q&A endpoint gave nothing, derive notes from /analyze
+  // (image type + suggestions) so the feature still produces insights.
+  if (!descriptions.some(Boolean)) {
+    descriptions = await Promise.all(
+      urls.map(async (u, i) => {
+        try {
+          const a = await analyzePhoto(u)
+          const type = (a && a.image_type) || ''
+          const sugg = (a && Array.isArray(a.suggestions) && a.suggestions[0]) || ''
+          const text = [type, sugg].filter(Boolean).join(' — ')
+          return text ? `Photo ${i + 1}: ${text}` : ''
+        } catch {
+          return ''
+        }
+      }),
+    )
+  }
+
   const notes = descriptions.filter(Boolean).join('\n')
   if (!notes) return null
 
@@ -55,9 +85,26 @@ export async function analyzeAlbum(photoUrls) {
     const [res] = await rewriteTexts([notes], instruction)
     summary = res || ''
   } catch {
-    return null
+    summary = ''
   }
-  return parseLabeled(summary)
+  return parseLabeled(summary) || basicFromNotes(notes)
+}
+
+// Last-resort insight built purely client-side from the per-photo notes, so the
+// card shows something useful even if the LLM synthesis was unavailable.
+function basicFromNotes(notes) {
+  const firstLine = notes.split('\n')[0].replace(/^Photo \d+:\s*/i, '').trim()
+  if (!firstLine) return null
+  const sentence = firstLine.split(/[.!?]/)[0].trim()
+  const words = sentence.split(/\s+/).slice(0, 6).join(' ')
+  return {
+    title: words ? words.charAt(0).toUpperCase() + words.slice(1) : '',
+    context: firstLine.length > 4 ? firstLine.charAt(0).toUpperCase() + firstLine.slice(1) : '',
+    themes: [],
+    mood: '',
+    highlight: '',
+    people: '',
+  }
 }
 
 function parseLabeled(text) {

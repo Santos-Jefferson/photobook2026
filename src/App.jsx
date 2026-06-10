@@ -25,8 +25,20 @@ export default function App() {
   const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0) // bumped on uploads to refresh tabs
   const [pending, setPending] = useState(null) // { photos: [dataURL], title } awaiting options
+  const [photosFavOnly, setPhotosFavOnly] = useState(false) // open Photos pre-filtered to favorites
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1)
+
+  // Navigate between tabs; reset the Photos favorites filter unless we're
+  // explicitly opening favorites (see openFavorites).
+  function navigate(v) {
+    if (v === 'photos') setPhotosFavOnly(false)
+    setView(v)
+  }
+  function openFavorites() {
+    setPhotosFavOnly(true)
+    setView('photos')
+  }
 
   async function handleGenerate({ payload, previewDataUrls, demo, bedtime }) {
     setView('loading')
@@ -184,7 +196,7 @@ export default function App() {
   if (view === 'creator' || view === 'error') {
     return (
       <>
-        <TopBar onNavigate={setView} onUploaded={bumpRefresh} />
+        <TopBar onNavigate={navigate} onUploaded={bumpRefresh} />
         <Creator
           onGenerate={handleGenerate}
           error={view === 'error' ? error : ''}
@@ -193,7 +205,7 @@ export default function App() {
           onOpenMemories={() => setView('memories')}
           onOpenPhotos={() => setView('photos')}
         />
-        <BottomNav active="home" onNavigate={setView} />
+        <BottomNav active="home" onNavigate={navigate} />
       </>
     )
   }
@@ -204,7 +216,14 @@ export default function App() {
   if (view === 'explore') {
     tab = <People onBack={() => setView('home')} />
   } else if (view === 'photos') {
-    tab = <Photos key={'photos-' + refreshKey} onBack={() => setView('home')} onCreatePhotobook={createPhotobookFromPhotos} />
+    tab = (
+      <Photos
+        key={'photos-' + refreshKey + '-' + photosFavOnly}
+        initialFavOnly={photosFavOnly}
+        onBack={() => setView('home')}
+        onCreatePhotobook={createPhotobookFromPhotos}
+      />
+    )
   } else if (view === 'memories') {
     tab = <Memories onCreate={generateFromMemory} onBack={() => setView('home')} />
   } else if (view === 'saved') {
@@ -214,8 +233,9 @@ export default function App() {
     tab = (
       <Home
         refreshKey={refreshKey}
-        onNavigate={setView}
+        onNavigate={navigate}
         onOpenBook={openSavedById}
+        onSeeAllFavorites={openFavorites}
         onCreate={() => setView('creator')}
       />
     )
@@ -223,9 +243,9 @@ export default function App() {
 
   return (
     <>
-      <TopBar onNavigate={setView} onUploaded={bumpRefresh} />
+      <TopBar onNavigate={navigate} onUploaded={bumpRefresh} />
       {tab}
-      <BottomNav active={active} onNavigate={setView} />
+      <BottomNav active={active} onNavigate={navigate} />
     </>
   )
 }
