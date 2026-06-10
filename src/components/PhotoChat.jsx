@@ -83,17 +83,23 @@ export default function PhotoChat({
     if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight
   }, [thread])
 
-  // Analyze once in the background to get image_type (improves edit context).
-  // The result is intentionally not surfaced — no description/suggestions UI.
-  useEffect(() => {
-    let cancelled = false
-    analyzePhoto(photoRef.current)
-      .then((a) => !cancelled && setAnalysis(a))
-      .catch(() => {})
-    return () => {
-      cancelled = true
+  // Suggestions are fetched on demand (via the "Suggest edits" button) rather
+  // than automatically, so the chat doesn't fire a slow request on open and
+  // surface suggestions out of the blue.
+  const [analyzing, setAnalyzing] = useState(false)
+  async function requestSuggestions() {
+    if (analyzing || busy) return
+    setErr('')
+    setAnalyzing(true)
+    try {
+      const a = await analyzePhoto(photoRef.current)
+      setAnalysis(a || {})
+    } catch (e) {
+      setErr(e.message || String(e))
+    } finally {
+      setAnalyzing(false)
     }
-  }, [])
+  }
 
   const imageType = (analysis && analysis.image_type) || 'photo'
 
@@ -367,8 +373,13 @@ export default function PhotoChat({
           </div>
         )}
 
-        {/* Analyze-API suggestions (loaded in the background; non-blocking). */}
-        {!thread.length && suggestions.length > 0 && (
+        {/* On-demand suggestions: tap to ask the analyze API what edits suit
+            this photo. Only fired when requested, never automatically. */}
+        {!analysis ? (
+          <button className="chat-suggest-btn" disabled={analyzing || busy} onClick={requestSuggestions}>
+            {analyzing ? 'Looking at your photo…' : '💡 Suggest edits for this photo'}
+          </button>
+        ) : suggestions.length > 0 ? (
           <div className="chat-suggestions">
             <span className="chat-suggest-label">Suggestions</span>
             {suggestions.map((s, i) => (
@@ -377,6 +388,8 @@ export default function PhotoChat({
               </button>
             ))}
           </div>
+        ) : (
+          <p className="chat-muted">No suggestions for this photo — try a style or describe an edit below.</p>
         )}
 
         {thread.map((m, i) =>

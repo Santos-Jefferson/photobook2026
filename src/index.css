@@ -3225,3 +3225,20 @@ button {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
   animation: pd-sheet-up 0.2s ease;
 }
+
+/* On-demand "Suggest edits" button in the photo chat */
+.chat-suggest-btn {
+  align-self: flex-start;
+  border: 1px dashed var(--line);
+  background: var(--bg-soft);
+  color: var(--accent-strong);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 14px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.chat-suggest-btn:disabled {
+  opacity: 0.6;
+}
