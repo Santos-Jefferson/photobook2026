@@ -26,6 +26,13 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0) // bumped on uploads to refresh tabs
   const [pending, setPending] = useState(null) // { photos: [dataURL], title } awaiting options
   const [photosFavOnly, setPhotosFavOnly] = useState(false) // open Photos pre-filtered to favorites
+  const [flash, setFlash] = useState('') // transient toast message
+
+  // Show a brief toast that auto-dismisses.
+  function showFlash(msg) {
+    setFlash(msg)
+    setTimeout(() => setFlash(''), 5000)
+  }
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1)
 
@@ -90,7 +97,12 @@ export default function App() {
       let finalBook = await rewriteBookPerspective(result, payload?.perspective)
 
       // Optionally soften the whole story into a gentle bedtime read.
-      if (bedtime) finalBook = await rewriteBookBedtime(finalBook)
+      if (bedtime) {
+        finalBook = await rewriteBookBedtime(finalBook)
+        if (finalBook.__bedtimeFailed) {
+          showFlash('Bedtime mode needs the writing service, which wasn’t reachable — your story was kept as written.')
+        }
+      }
 
       setBook(finalBook)
       setView('story')
@@ -177,6 +189,11 @@ export default function App() {
     return (
       <ErrorBoundary onReset={reset}>
         <StoryViewer book={book} onExit={reset} savedId={savedId} onSaved={setSavedId} />
+        {flash && (
+          <div className="app-flash" onClick={() => setFlash('')}>
+            {flash}
+          </div>
+        )}
       </ErrorBoundary>
     )
   }
@@ -248,6 +265,11 @@ export default function App() {
       <TopBar onNavigate={navigate} onUploaded={bumpRefresh} />
       {tab}
       <BottomNav active={active} onNavigate={navigate} />
+      {flash && (
+        <div className="app-flash" onClick={() => setFlash('')}>
+          {flash}
+        </div>
+      )}
     </>
   )
 }

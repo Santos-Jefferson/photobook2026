@@ -33,10 +33,18 @@ export async function rewriteBookBedtime(book) {
 
   try {
     const rewritten = await rewriteTexts(texts, BEDTIME_INSTRUCTION)
-    rewritten.forEach((t, i) => apply[i] && apply[i](t || texts[i]))
-    out.__bedtime = true
+    let changed = false
+    rewritten.forEach((t, i) => {
+      const val = t || texts[i]
+      if (val !== texts[i]) changed = true
+      apply[i] && apply[i](val)
+    })
+    // If nothing changed, the rewrite service was unreachable or returned the
+    // originals — flag it so the UI can tell the user instead of failing silently.
+    if (changed) out.__bedtime = true
+    else out.__bedtimeFailed = true
     return out
   } catch {
-    return book
+    return { ...book, __bedtimeFailed: true }
   }
 }
