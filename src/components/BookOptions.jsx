@@ -53,7 +53,14 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const overBy = photos.length - MAX_PHOTOS
   const canSubmit = photos.length >= MIN_PHOTOS && photos.length <= MAX_PHOTOS && !busy
+  const photosHint =
+    photos.length < MIN_PHOTOS
+      ? `Add at least ${MIN_PHOTOS - photos.length} more photo${MIN_PHOTOS - photos.length > 1 ? 's' : ''}.`
+      : overBy > 0
+        ? `A photobook uses up to ${MAX_PHOTOS} photos — remove ${overBy} to continue. Tap × on the ones to drop.`
+        : ''
 
   function removeAt(i) {
     setPhotos((prev) => (prev.length <= MIN_PHOTOS ? prev : prev.filter((_, j) => j !== i)))
@@ -98,10 +105,11 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
       <section className="card">
         <div className="card-title">
           <h2>Your photos</h2>
-          <span className="muted">
+          <span className={overBy > 0 ? 'muted over' : 'muted'}>
             {photos.length}/{MAX_PHOTOS}
           </span>
         </div>
+        {photosHint && <p className={`bookopts-photos-hint ${overBy > 0 ? 'warn' : ''}`}>{photosHint}</p>}
         <div className="thumbs">
           {photos.map((p, i) => (
             <figure key={i} className="thumb">
@@ -262,7 +270,11 @@ export default function BookOptions({ photos: initialPhotos, title: initialTitle
       </section>
 
       <button className="cta" disabled={!canSubmit} onClick={submit}>
-        {busy ? 'Working…' : `Make my photobook (${photos.length})`}
+        {busy
+          ? 'Working…'
+          : overBy > 0
+            ? `Remove ${overBy} to continue`
+            : `Make my photobook (${photos.length})`}
       </button>
     </div>
   )

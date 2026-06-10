@@ -3191,3 +3191,18 @@ button {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* BookOptions: over/under photo-count hint */
+.bookopts-photos-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.bookopts-photos-hint.warn {
+  color: var(--danger);
+}
+.card-title .muted.over {
+  color: var(--danger);
+  font-weight: 800;
+}

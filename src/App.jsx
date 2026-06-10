@@ -125,10 +125,12 @@ export default function App() {
   // generating, like the dedicated creator page.
   // `photoItems` is an array of { url, meta } (or bare url strings). meta carries
   // the stored EXIF (date/GPS) so the options step can add date/location context.
+  // We pass ALL chosen photos through (capped at a sane upper bound); when there
+  // are more than MAX_PHOTOS, the options step lets the user pick which to keep.
   function startBook(photoItems, title, from) {
     const photos = (photoItems || [])
       .map((p) => (typeof p === 'string' ? { url: p, meta: null } : { url: p.url, meta: p.meta || null }))
-      .slice(0, MAX_PHOTOS)
+      .slice(0, 12)
     if (photos.length < MIN_PHOTOS) {
       window.alert(`A photobook needs at least ${MIN_PHOTOS} photos. Add one more and try again.`)
       return
