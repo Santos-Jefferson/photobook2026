@@ -455,6 +455,7 @@ function PhotoDetail({ photo, onBack, onToggleFavorite, onDelete, onCreateBook, 
             caption=""
             narrative=""
             storyContext=""
+            standalone
             canRevert={false}
             onRevert={() => {}}
             onApplyImage={(b64) => {

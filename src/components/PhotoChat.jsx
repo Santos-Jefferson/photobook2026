@@ -13,6 +13,25 @@ const MEMORY_ACTIONS = [
   { label: 'More emotional', instruction: 'Make it more emotional, heartfelt and moving', src: 'story' },
 ]
 
+// One-tap actions for a standalone photo (no story text): quick style presets
+// and easy edits that show a fast visual result. Style codes must match the
+// API's catalog (see config STYLES).
+const QUICK_STYLES = [
+  { label: '🎨 Retro Toons', code: 'Retro_Toons' },
+  { label: '✨ Anime', code: 'Anime' },
+  { label: '💥 Comic Book', code: 'Comic_Book' },
+  { label: '🖌️ Watercolor', code: 'Watercolor_Sketch' },
+  { label: '🖼️ Oil Painting', code: 'Oil_Painting' },
+  { label: '✏️ Pencil Sketch', code: 'Pencil_Sketch' },
+  { label: '🌈 Color Pop', code: 'Color_Pop_People_Gray_Background' },
+  { label: '🔧 Enhance', code: 'Enhance_Photo' },
+  { label: '🎞️ Colorize', code: 'Colorize_Photo' },
+]
+const QUICK_EDITS = [
+  { label: '✂️ Remove background', message: 'Remove the background' },
+  { label: '🌫️ Blur background', message: 'Blur the background behind the main subject' },
+]
+
 function imgSrc(v) {
   if (!v) return ''
   if (v.startsWith('data:') || v.startsWith('http')) return v
@@ -33,6 +52,7 @@ export default function PhotoChat({
   onApplyImage,
   onApplyText,
   onClose,
+  standalone = false,
 }) {
   const [analysis, setAnalysis] = useState(null)
   const [thread, setThread] = useState([])
@@ -100,6 +120,27 @@ export default function PhotoChat({
     } catch (e) {
       setErr(e.message || String(e))
       setThread((t) => [...t, { role: 'assistant', text: '⚠ ' + (e.message || String(e)), error: true }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Apply a specific style preset in one tap (used by the quick-action chips).
+  async function applyPresetStyle(styleCode) {
+    if (busy) return
+    setErr('')
+    setBusy(true)
+    try {
+      const r = await sendPhotoMessage({
+        photo: photoRef.current,
+        message: `Apply the ${styleCode.replace(/_/g, ' ')} style`,
+        selectedStyle: styleCode,
+        imageType,
+      })
+      if (r.result_image_b64) onApplyImage(r.result_image_b64, r.style_applied || styleCode)
+      else if (r.text_response) setErr(r.text_response)
+    } catch (e) {
+      setErr(e.message || String(e))
     } finally {
       setBusy(false)
     }
@@ -240,34 +281,50 @@ export default function PhotoChat({
       </div>
 
       <div className="chat-body" ref={scroller}>
-        {/* memory actions — quick AI transforms of this memory */}
-        <div className="chat-actions">
-          {MEMORY_ACTIONS.map((a) => (
-            <button key={a.label} className="chip chip-action" disabled={busy} onClick={() => runRewrite(a)}>
-              {a.label}
+        {/* Standalone photo (no story text): one-tap style presets + quick edits.
+            In a story, instead show the memory-text actions. */}
+        {standalone ? (
+          <div className="chat-actions">
+            {QUICK_STYLES.map((s) => (
+              <button key={s.code} className="chip chip-action" disabled={busy} onClick={() => applyPresetStyle(s.code)}>
+                {s.label}
+              </button>
+            ))}
+            {QUICK_EDITS.map((e) => (
+              <button key={e.label} className="chip chip-action" disabled={busy} onClick={() => send(e.message)}>
+                {e.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="chat-actions">
+            {MEMORY_ACTIONS.map((a) => (
+              <button key={a.label} className="chip chip-action" disabled={busy} onClick={() => runRewrite(a)}>
+                {a.label}
+              </button>
+            ))}
+            <button
+              className={`chip chip-action ${langPick ? 'on' : ''}`}
+              disabled={busy}
+              onClick={() => {
+                setCardOpen(false)
+                setLangPick((o) => !o)
+              }}
+            >
+              Translate ▾
             </button>
-          ))}
-          <button
-            className={`chip chip-action ${langPick ? 'on' : ''}`}
-            disabled={busy}
-            onClick={() => {
-              setCardOpen(false)
-              setLangPick((o) => !o)
-            }}
-          >
-            Translate ▾
-          </button>
-          <button
-            className={`chip chip-action chip-card ${cardOpen ? 'on' : ''}`}
-            disabled={busy}
-            onClick={() => {
-              setLangPick(false)
-              setCardOpen((o) => !o)
-            }}
-          >
-            ✨ Greeting card
-          </button>
-        </div>
+            <button
+              className={`chip chip-action chip-card ${cardOpen ? 'on' : ''}`}
+              disabled={busy}
+              onClick={() => {
+                setLangPick(false)
+                setCardOpen((o) => !o)
+              }}
+            >
+              ✨ Greeting card
+            </button>
+          </div>
+        )}
 
         {langPick && (
           <div className="chat-langs">
