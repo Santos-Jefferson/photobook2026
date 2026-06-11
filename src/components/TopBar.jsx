@@ -99,6 +99,10 @@ export default function TopBar({ onNavigate, onUploaded }) {
               setName(v)
               v ? localStorage.setItem(NAME_KEY, v) : localStorage.removeItem(NAME_KEY)
             }}
+            onAddMemory={() => {
+              setProfile(false)
+              onNavigate && onNavigate('newMemory')
+            }}
             onClose={() => setProfile(false)}
           />,
           document.body,
@@ -166,7 +170,7 @@ function SearchOverlay({ onNavigate, onClose }) {
   )
 }
 
-function ProfileSheet({ name, onSave, onClose }) {
+function ProfileSheet({ name, onSave, onAddMemory, onClose }) {
   const [val, setVal] = useState(name)
   return (
     <div className="tb-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -194,6 +198,12 @@ function ProfileSheet({ name, onSave, onClose }) {
         >
           Save
         </button>
+
+        {/* MVP-only: Capsyl has no "add memory" yet, so it lives here. */}
+        <button className="tb-profile-secondary" onClick={onAddMemory}>
+          ✨ Add a memory
+        </button>
+
         <p className="tb-profile-note">Profile &amp; settings are saved on this device only.</p>
       </div>
     </div>

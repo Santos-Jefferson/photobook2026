@@ -3,6 +3,7 @@ import Creator from './components/Creator'
 import StoryViewer from './components/StoryViewer'
 import SavedBooks from './components/SavedBooks'
 import Memories from './components/Memories'
+import NewMemory from './components/NewMemory'
 import Photos from './components/Photos'
 import Home from './components/Home'
 import People from './components/People'
@@ -195,6 +196,20 @@ export default function App() {
           </div>
         )}
       </ErrorBoundary>
+    )
+  }
+
+  // Create a memory — reached from the user profile (kept out of the Memories
+  // tab to match Capsyl, which has no "add memory" today).
+  if (view === 'newMemory') {
+    return (
+      <NewMemory
+        onCancel={() => setView('memories')}
+        onSaved={() => {
+          bumpRefresh()
+          setView('memories')
+        }}
+      />
     )
   }
 

@@ -3242,3 +3242,15 @@ button {
 .chat-suggest-btn:disabled {
   opacity: 0.6;
 }
+
+/* Secondary action in the profile sheet (e.g. behind-the-scenes Add a memory) */
+.tb-profile-secondary {
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 12px;
+  border-radius: 14px;
+}
