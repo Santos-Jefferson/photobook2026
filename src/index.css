@@ -1867,10 +1867,10 @@ button {
   z-index: 60;
   width: 100%;
   max-width: var(--phone-w);
-  background: #ffffff;
+  background: #232c3a;
   padding-bottom: env(safe-area-inset-bottom);
-  border-top: 1px solid var(--line);
-  box-shadow: 0 -2px 16px rgba(15, 45, 75, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.22);
 }
 .bottom-nav-item {
   flex: 1;
@@ -1882,7 +1882,7 @@ button {
   border: none;
   padding: 8px 0 7px;
   cursor: pointer;
-  color: #8a95a6;
+  color: #aeb9cb;
   font-family: inherit;
 }
 /* Real Capsyl wl-icon glyphs, inlined as SVG; `color` drives the fill. */
