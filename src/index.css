@@ -3310,3 +3310,39 @@ button {
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
+
+/* Re-style (edit) the whole photobook from the closing page */
+.restart-restyle {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+.restyle-sheet .field {
+  margin-bottom: 12px;
+}
+.restyle-sheet .field select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  font-family: inherit;
+  font-size: 15px;
+  background: var(--card);
+  color: var(--text);
+}
+.restyle-note {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 14px;
+}
+.restyle-go {
+  width: 100%;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}

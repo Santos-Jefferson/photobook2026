@@ -5,9 +5,10 @@ import { downloadStoryPdf, downloadStoryVideo, shareToWhatsApp, shareToInstagram
 import { useNarration, NARRATION_LANGS, VOICE_OPTIONS } from '../narration'
 import { translateBook } from '../translateClient'
 import { saveBook } from '../bookStorage'
+import { VIBES, STYLES } from '../config'
 import PhotoChat from './PhotoChat'
 
-export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
+export default function StoryViewer({ book, onExit, savedId = '', onSaved, onRegenerate }) {
   // Local, editable copy so photo-chat edits update the story live (and flow
   // into narration + the HTML export).
   const [liveBook, setLiveBook] = useState(book)
@@ -25,6 +26,12 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
   const [shareMenu, setShareMenu] = useState(false) // export options popover open
   const [narrateMenu, setNarrateMenu] = useState(false) // language/voice sheet open
   const [saveState, setSaveState] = useState('') // '' | saving | saved | error
+  // Re-style the whole photobook (new art style + mood) from the closing page.
+  const [editOpen, setEditOpen] = useState(false)
+  const [editStyle, setEditStyle] = useState(
+    STYLES.includes(book?.style) ? book.style : STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0],
+  )
+  const [editVibe, setEditVibe] = useState(VIBES.includes(book?.vibe) ? book.vibe : VIBES[0])
   const currentId = useRef(savedId) // the saved-library id this book maps to
 
   useEffect(() => {
@@ -404,9 +411,55 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved }) {
           <button className="restart restart-share" onClick={() => setShareMenu(true)} disabled={sharing}>
             {sharing ? '… Preparing' : '⤓ Share & export'}
           </button>
+          {onRegenerate && (
+            <button className="restart restart-restyle" onClick={() => setEditOpen(true)}>
+              ✨ Edit photobook (style &amp; mood)
+            </button>
+          )}
           <button className="restart restart-ghost" onClick={onExit}>
             Make another
           </button>
+        </div>
+      )}
+
+      {editOpen && (
+        <div className="share-sheet-backdrop" onClick={() => setEditOpen(false)}>
+          <div className="share-sheet restyle-sheet" role="menu" onClick={(e) => e.stopPropagation()}>
+            <div className="share-sheet-title">Edit this photobook</div>
+            <p className="restyle-note">Re-generate the whole story with a new art style and mood.</p>
+            <label className="field">
+              <span>Art style</span>
+              <select value={editStyle} onChange={(e) => setEditStyle(e.target.value)}>
+                {STYLES.map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Mood</span>
+              <select value={editVibe} onChange={(e) => setEditVibe(e.target.value)}>
+                {VIBES.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="restyle-go"
+              onClick={() => {
+                setEditOpen(false)
+                onRegenerate({ style: editStyle, vibe: editVibe })
+              }}
+            >
+              ✨ Re-generate photobook
+            </button>
+            <button className="share-sheet-close" onClick={() => setEditOpen(false)}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

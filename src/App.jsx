@@ -184,12 +184,43 @@ export default function App() {
     generateQuick(photoItems, title)
   }
 
+  // Re-generate the current book with a new art style + mood, reusing its
+  // original photos (and title). Reached from the photobook's final page.
+  async function regenerateBook({ style, vibe }) {
+    const pages = Array.isArray(book?.pages) ? book.pages : []
+    const srcs = pages
+      .map((p) => p.original_image || (p.styled_image_b64 ? 'data:image/png;base64,' + p.styled_image_b64 : ''))
+      .filter(Boolean)
+    if (srcs.length < MIN_PHOTOS) {
+      showFlash('Couldn’t find the original photos to re-generate this book.')
+      return
+    }
+    setView('loading')
+    setError('')
+    try {
+      const photosBase64 = srcs.map((s) => s.replace(/^data:[^,]+,/, ''))
+      const payload = buildPayload({
+        photosBase64,
+        vibe,
+        stylizeImages: true,
+        style,
+        title: (book && book.title) || 'My photobook',
+        context: '',
+        perspective: 'ai',
+      })
+      await handleGenerate({ payload, previewDataUrls: srcs, demo: !getApiUrl() })
+    } catch (err) {
+      setError(err.message || String(err))
+      setView('error')
+    }
+  }
+
   if (view === 'loading') return <Loader />
 
   if (view === 'story' && book) {
     return (
       <ErrorBoundary onReset={reset}>
-        <StoryViewer book={book} onExit={reset} savedId={savedId} onSaved={setSavedId} />
+        <StoryViewer book={book} onExit={reset} savedId={savedId} onSaved={setSavedId} onRegenerate={regenerateBook} />
         {flash && (
           <div className="app-flash" onClick={() => setFlash('')}>
             {flash}
