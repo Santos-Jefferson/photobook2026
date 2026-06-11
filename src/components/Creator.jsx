@@ -13,6 +13,7 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
   const [perspective, setPerspective] = useState(PERSPECTIVES[0].code)
   const [style, setStyle] = useState(STYLES.includes('Retro_Toons') ? 'Retro_Toons' : STYLES[0])
   const [stylize, setStylize] = useState(true)
+  const [bedtime, setBedtime] = useState(false)
   const [busy, setBusy] = useState(false)
 
   // EXIF-derived context (date/time/place) extracted from the uploaded photos.
@@ -106,7 +107,7 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
         context: fullContext,
         perspective,
       })
-      await onGenerate({ payload, previewDataUrls, demo })
+      await onGenerate({ payload, previewDataUrls, demo, bedtime })
     } finally {
       setBusy(false)
     }
@@ -285,6 +286,14 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
         <label className="toggle">
           <input type="checkbox" checked={stylize} onChange={(e) => setStylize(e.target.checked)} />
           <span>Stylize my photos</span>
+        </label>
+
+        <label className="toggle">
+          <input type="checkbox" checked={bedtime} onChange={(e) => setBedtime(e.target.checked)} />
+          <span>
+            🌙 Bedtime story
+            <small className="toggle-sub">Retell it gently, for reading to a child</small>
+          </span>
         </label>
       </section>
 

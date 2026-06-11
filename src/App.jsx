@@ -7,13 +7,13 @@ import NewMemory from './components/NewMemory'
 import Photos from './components/Photos'
 import Home from './components/Home'
 import People from './components/People'
-import BookOptions from './components/BookOptions'
 import TopBar from './components/TopBar'
 import Loader from './components/Loader'
 import ErrorBoundary from './components/ErrorBoundary'
 import { generatePhotoBook, buildPayload, buildDemoResponse, fileToOrientedBase64, getApiUrl } from './api'
 import { normalizeBook } from './book'
 import { getSavedBook } from './bookStorage'
+import { summarizeStoredMetas } from './metadata'
 import { rewriteBookPerspective } from './perspectiveClient'
 import { rewriteBookBedtime } from './bedtimeClient'
 import { MIN_PHOTOS, MAX_PHOTOS } from './config'
@@ -25,9 +25,9 @@ export default function App() {
   const [savedId, setSavedId] = useState('') // id of the saved record this book maps to
   const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0) // bumped on uploads to refresh tabs
-  const [pending, setPending] = useState(null) // { photos: [dataURL], title } awaiting options
   const [photosFavOnly, setPhotosFavOnly] = useState(false) // open Photos pre-filtered to favorites
   const [flash, setFlash] = useState('') // transient toast message
+  // (Quick create from Memory/Photos skips the options screen entirely.)
 
   // Show a brief toast that auto-dismisses.
   function showFlash(msg) {
@@ -133,55 +133,55 @@ export default function App() {
     if (b) openSaved(b, id)
   }
 
-  // Both create flows (a Memory or a Photos selection) funnel here: validate the
-  // 2–5 rule, then show the options step (mood / style / context) before
-  // generating, like the dedicated creator page.
-  // `photoItems` is an array of { url, meta } (or bare url strings). meta carries
-  // the stored EXIF (date/GPS) so the options step can add date/location context.
-  // We pass ALL chosen photos through (capped at a sane upper bound); when there
-  // are more than MAX_PHOTOS, the options step lets the user pick which to keep.
-  function startBook(photoItems, title, from) {
-    const photos = (photoItems || [])
-      .map((p) => (typeof p === 'string' ? { url: p, meta: null } : { url: p.url, meta: p.meta || null }))
-      .slice(0, 12)
-    if (photos.length < MIN_PHOTOS) {
+  // Quick create (from a Memory or a Photos selection): no options screen — uses
+  // sensible defaults (Retro Toons style, heartwarming mood, AI storyteller) so
+  // it's one tap. The "from scratch" creator is where the user picks options, and
+  // a saved book can always be re-shaped page-by-page in chat.
+  async function generateQuick(photoItems, title) {
+    const items = (photoItems || []).map((p) =>
+      typeof p === 'string' ? { url: p, meta: null } : { url: p.url, meta: p.meta || null },
+    )
+    if (items.length < MIN_PHOTOS) {
       window.alert(`A photobook needs at least ${MIN_PHOTOS} photos. Add one more and try again.`)
       return
     }
-    setPending({ photos, title: title || '', from: from || 'home' })
+    const chosen = items.slice(0, MAX_PHOTOS)
+    setView('loading')
     setError('')
-    setView('bookOptions')
-  }
-
-  function generateFromMemory(memory) {
-    const items = (memory.photos || []).map((url, i) => ({ url, meta: (memory.metas && memory.metas[i]) || null }))
-    startBook(items, memory.title, 'memories')
-  }
-
-  function createPhotobookFromPhotos(photoItems, title) {
-    startBook(photoItems, title, 'photos')
-  }
-
-  // Run generation with the photos + the options chosen on the BookOptions step.
-  async function generateWithOptions({ photos, title, context, vibe, style, perspective, stylize, bedtime }) {
     try {
-      const urls = photos.map((p) => (typeof p === 'string' ? p : p.url))
-      const previewDataUrls = urls // JPEG data URLs
+      // EXIF date/place context, folded in automatically (best-effort).
+      let context = ''
+      try {
+        const meta = await summarizeStoredMetas(chosen.map((p) => p.meta))
+        context = meta.summary || ''
+      } catch {
+        /* no EXIF context available */
+      }
+      const urls = chosen.map((p) => p.url)
       const photosBase64 = urls.map((d) => d.replace(/^data:[^,]+,/, ''))
       const payload = buildPayload({
         photosBase64,
-        vibe,
-        stylizeImages: stylize,
-        style,
-        title: title || 'My photos',
+        vibe: 'heartwarming',
+        stylizeImages: true,
+        style: 'Retro_Toons',
+        title: title || 'My photobook',
         context,
-        perspective,
+        perspective: 'ai',
       })
-      await handleGenerate({ payload, previewDataUrls, demo: !getApiUrl(), bedtime })
+      await handleGenerate({ payload, previewDataUrls: urls, demo: !getApiUrl() })
     } catch (err) {
       setError(err.message || String(err))
       setView('error')
     }
+  }
+
+  function generateFromMemory(memory) {
+    const items = (memory.photos || []).map((url, i) => ({ url, meta: (memory.metas && memory.metas[i]) || null }))
+    generateQuick(items, memory.title)
+  }
+
+  function createPhotobookFromPhotos(photoItems, title) {
+    generateQuick(photoItems, title)
   }
 
   if (view === 'loading') return <Loader />
@@ -209,18 +209,6 @@ export default function App() {
           bumpRefresh()
           setView('memories')
         }}
-      />
-    )
-  }
-
-  // Options step (mood / style / context) before generating from a selection.
-  if (view === 'bookOptions' && pending) {
-    return (
-      <BookOptions
-        photos={pending.photos}
-        title={pending.title}
-        onGenerate={generateWithOptions}
-        onBack={() => setView(pending.from || 'home')}
       />
     )
   }
