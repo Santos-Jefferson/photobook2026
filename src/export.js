@@ -412,71 +412,189 @@ async function fetchNarrationBuffer(audioCtx, text, lang, voice) {
   }
 }
 
+const FONT = '"Plus Jakarta Sans", "Inter", Arial, sans-serif'
+const ACCENT = '#0aa1dd'
+
 function drawVideoFrame(ctx, W, H, frame, p, idx, total) {
   const { s, img } = frame
-  ctx.fillStyle = '#0b1620'
-  ctx.fillRect(0, 0, W, H)
-  if (s.type !== 'photo' && frame.collage && frame.collage.length) {
-    drawCollage(ctx, W, H, frame.collage)
-  } else if (img) {
-    const r = Math.max(W / img.width, H / img.height)
-    const w = img.width * r
-    const h = img.height * r
-    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h)
-  }
-  const scrim = ctx.createLinearGradient(0, H * 0.5, 0, H)
-  scrim.addColorStop(0, 'rgba(0,0,0,0)')
-  scrim.addColorStop(1, 'rgba(0,0,0,0.85)')
-  ctx.fillStyle = scrim
-  ctx.fillRect(0, 0, W, H)
+  ctx.save()
+  ctx.filter = 'none'
+  ctx.globalAlpha = 1
+  ctx.textAlign = 'left'
+  if (s.type === 'photo') drawPhotoFrame(ctx, W, H, s, img)
+  else drawCoverFrame(ctx, W, H, s, frame.collage || [])
+  ctx.restore()
 
-  // top "stories" progress bar
+  // Top "stories" progress bar — light on photos, tinted on the light covers.
+  const isPhoto = s.type === 'photo'
   const pad = 28
   const gap = 8
   const segW = (W - pad * 2 - (total - 1) * gap) / total
   for (let i = 0; i < total; i++) {
     const x = pad + i * (segW + gap)
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'
+    ctx.fillStyle = isPhoto ? 'rgba(255,255,255,0.32)' : 'rgba(20,40,60,0.14)'
     roundRectPath(ctx, x, pad, segW, 5, 2.5)
     ctx.fill()
     const fillW = i < idx ? segW : i === idx ? segW * p : 0
     if (fillW > 0) {
-      ctx.fillStyle = '#ffffff'
+      ctx.fillStyle = isPhoto ? '#ffffff' : ACCENT
       roundRectPath(ctx, x, pad, fillW, 5, 2.5)
       ctx.fill()
     }
   }
-
-  const a = Math.min(1, p * 4) // quick fade-in
-  ctx.fillStyle = '#fff'
-  ctx.textBaseline = 'alphabetic'
-  // Stack the lower (body) block bottom-anchored, then place the upper (heading)
-  // block just above it — so long text never overlaps the heading.
-  const bottomMargin = 150
-  const blockGap = 30
-  if (s.type === 'photo') {
-    const bodyFont = '500 36px "Plus Jakarta Sans", Arial'
-    const headFont = '800 60px "Plus Jakarta Sans", Arial'
-    const bodyLines = wrapLines(ctx, trim(s.narrative, 240), W - 128, bodyFont).slice(0, 5)
-    const headLines = wrapLines(ctx, s.caption || '', W - 128, headFont).slice(0, 3)
-    ctx.globalAlpha = a * 0.92
-    const bodyTop = drawLinesUp(ctx, bodyLines, 64, H - bottomMargin, 44, bodyFont, 'left')
-    ctx.globalAlpha = a
-    drawLinesUp(ctx, headLines, 64, bodyTop - blockGap, 70, headFont, 'left')
-  } else {
-    const bodyFont = '500 36px "Plus Jakarta Sans", Arial'
-    const headFont = '800 76px "Plus Jakarta Sans", Arial'
-    const bodyLines = wrapLines(ctx, trim(s.text, 200), W - 200, bodyFont).slice(0, 5)
-    const headLines = wrapLines(ctx, s.title || '', W - 160, headFont).slice(0, 3)
-    ctx.textAlign = 'center'
-    ctx.globalAlpha = a * 0.9
-    const bodyTop = drawLinesUp(ctx, bodyLines, W / 2, H - bottomMargin, 44, bodyFont, 'center')
-    ctx.globalAlpha = a
-    drawLinesUp(ctx, headLines, W / 2, bodyTop - blockGap - 6, 86, headFont, 'center')
-    ctx.textAlign = 'left'
-  }
-  ctx.globalAlpha = 1
 }
+
+// Photo slide: blurred cover-fill backdrop + the whole photo (contain) + a bottom
+// scrim + caption/narrative — matching the on-screen PhotoSlide.
+function drawPhotoFrame(ctx, W, H, s, img) {
+  ctx.fillStyle = '#0b1620'
+  ctx.fillRect(0, 0, W, H)
+  if (img) {
+    ctx.save()
+    ctx.filter = 'blur(55px) brightness(0.55)'
+    drawCoverNoStroke(ctx, img, -60, -60, W + 120, H + 120)
+    ctx.restore()
+    drawContain(ctx, img, 0, 0, W, H)
+  }
+  // bottom scrim (to top): darkest at the bottom, fading out by ~58%
+  const scrim = ctx.createLinearGradient(0, H, 0, H * 0.42)
+  scrim.addColorStop(0, 'rgba(0,0,0,0.78)')
+  scrim.addColorStop(0.42, 'rgba(0,0,0,0.4)')
+  scrim.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = scrim
+  ctx.fillRect(0, H * 0.42, W, H * 0.58)
+
+  // caption (bold white) above narrative (light), both bottom-anchored
+  ctx.textBaseline = 'alphabetic'
+  const capFont = `800 56px ${FONT}`
+  const narrFont = `500 36px ${FONT}`
+  const narrLines = wrapLines(ctx, trim(s.narrative, 260), W - 120, narrFont).slice(0, 5)
+  const capLines = wrapLines(ctx, s.caption || '', W - 120, capFont).slice(0, 3)
+  ctx.fillStyle = '#eef2f6'
+  const narrTop = drawLinesUp(ctx, narrLines, 60, H - 120, 50, narrFont, 'left')
+  ctx.fillStyle = '#ffffff'
+  drawLinesUp(ctx, capLines, 60, narrTop - 30, 64, capFont, 'left')
+}
+
+// Opening / closing cover: light Capsyl gradient, centered dark text, and a
+// collage band of all photos across the bottom 46% — matching the on-screen cover.
+function drawCoverFrame(ctx, W, H, s, collage) {
+  const closing = s.type === 'closing'
+  drawRadialBg(ctx, W, H, closing)
+  const bandTop = Math.round(H * 0.54)
+  if (collage && collage.length) drawCollageBand(ctx, 0, bandTop, W, H - bandTop, collage, closing)
+
+  const parts = closing
+    ? [
+        { text: 'THE END', font: `700 30px ${FONT}`, color: ACCENT, lineH: 40, ls: 5, gap: 26 },
+        { text: s.text || '', font: `500 44px ${FONT}`, color: '#46586a', lineH: 60, gap: 18 },
+        { text: s.title || '', font: `700 48px ${FONT}`, color: ACCENT, lineH: 56 },
+      ]
+    : [
+        s.vibe ? { text: String(s.vibe).toUpperCase(), font: `700 30px ${FONT}`, color: ACCENT, lineH: 40, ls: 5, gap: 26 } : null,
+        { text: s.title || '', font: `800 84px ${FONT}`, color: '#16202c', lineH: 92, gap: 22 },
+        { text: s.text || '', font: `500 40px ${FONT}`, color: '#46586a', lineH: 56 },
+      ].filter(Boolean)
+  drawCoverText(ctx, W, 40, bandTop - 20, parts)
+}
+
+function drawRadialBg(ctx, W, H, closing) {
+  const cx = W / 2
+  const cy = closing ? H * 0.82 : H * 0.18
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.95)
+  if (closing) {
+    g.addColorStop(0, '#e6faf5')
+    g.addColorStop(0.55, '#f1fbf8')
+    g.addColorStop(1, '#ffffff')
+  } else {
+    g.addColorStop(0, '#eaf6fc')
+    g.addColorStop(0.55, '#f3f9fc')
+    g.addColorStop(1, '#ffffff')
+  }
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, H)
+}
+
+// Collage band at the bottom of a cover, matching the on-screen column logic
+// (1 / 2 / 2-for-four / else 3) with thin gaps and a soft fade into the text.
+function drawCollageBand(ctx, x, y, w, h, imgs, closing) {
+  const list = imgs.slice(0, 9)
+  const n = list.length
+  if (!n) return
+  const cols = n === 1 ? 1 : n === 2 ? 2 : n === 4 ? 2 : 3
+  const rows = Math.ceil(n / cols)
+  const gap = 6
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(x, y, w, h)
+  const cellW = (w - gap * (cols - 1)) / cols
+  const cellH = (h - gap * (rows - 1)) / rows
+  let i = 0
+  for (let r = 0; r < rows; r++) {
+    const cellsThisRow = Math.min(cols, n - r * cols)
+    for (let c = 0; c < cellsThisRow; c++) {
+      drawCoverNoStroke(ctx, list[i++], x + c * (cellW + gap), y + r * (cellH + gap), cellW, cellH)
+    }
+  }
+  // fade the top edge of the band into the cover background
+  const [fr, fg, fb] = closing ? [242, 251, 248] : [244, 249, 252]
+  const fade = ctx.createLinearGradient(0, y, 0, y + 160)
+  fade.addColorStop(0, `rgb(${fr},${fg},${fb})`)
+  fade.addColorStop(1, `rgba(${fr},${fg},${fb},0)`)
+  ctx.fillStyle = fade
+  ctx.fillRect(x, y, w, 160)
+}
+
+// Centered, vertically-centered stack of text parts within [top, bottom].
+function drawCoverText(ctx, W, top, bottom, parts) {
+  const maxW = W * 0.82
+  const measured = parts.map((part) => {
+    ctx.font = part.font
+    ctx.letterSpacing = part.ls ? `${part.ls}px` : '0px'
+    const lines = wrapLines(ctx, part.text, maxW, part.font).slice(0, 4)
+    return { ...part, lines, h: lines.length * part.lineH }
+  })
+  ctx.letterSpacing = '0px'
+  const totalGap = measured.reduce((sum, m) => sum + (m.gap || 0), 0)
+  const totalH = measured.reduce((sum, m) => sum + m.h, 0) + totalGap
+  let y = top + Math.max(0, (bottom - top - totalH) / 2)
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  for (const m of measured) {
+    ctx.font = m.font
+    ctx.fillStyle = m.color
+    ctx.letterSpacing = m.ls ? `${m.ls}px` : '0px'
+    for (const line of m.lines) {
+      ctx.fillText(line, W / 2, y)
+      y += m.lineH
+    }
+    y += m.gap || 0
+  }
+  ctx.letterSpacing = '0px'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+}
+
+// Cover-fit an image into a box (clipped, no stroke).
+function drawCoverNoStroke(ctx, img, x, y, w, h) {
+  const r = Math.max(w / img.width, h / img.height)
+  const iw = img.width * r
+  const ih = img.height * r
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih)
+  ctx.restore()
+}
+
+// Contain an image within a box (whole image visible, centered).
+function drawContain(ctx, img, x, y, w, h) {
+  const r = Math.min(w / img.width, h / img.height)
+  const iw = img.width * r
+  const ih = img.height * r
+  ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih)
+}
+
 
 // Wrap text into lines that fit `maxW` for the given font.
 function wrapLines(ctx, text, maxW, font) {
