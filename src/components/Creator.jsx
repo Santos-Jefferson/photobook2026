@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { VIBES, STYLES, MAX_PHOTOS, DEFAULT_API_URL, PERSPECTIVES } from '../config'
+import { createPortal } from 'react-dom'
+import { VIBES, STYLES, MAX_PHOTOS, PERSPECTIVES } from '../config'
 import { fileToOrientedBase64, getApiUrl, setApiUrl, getApiKey, setApiKey } from '../api'
 import { readPhotoMeta, summarizePhotoMeta } from '../metadata'
+import { listPhotos } from '../photoStore'
 
 let uid = 0
+
+// Stored EXIF ({ t, lat, lon }) → the shape summarizePhotoMeta expects.
+function storedToMeta(s) {
+  return s ? { date: s.t ? new Date(s.t) : null, latitude: s.lat, longitude: s.lon } : {}
+}
 
 export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, onOpenMemories, onOpenPhotos }) {
   const [photos, setPhotos] = useState([]) // { id, file, url }
@@ -15,15 +22,16 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
   const [stylize, setStylize] = useState(true)
   const [bedtime, setBedtime] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [picker, setPicker] = useState(false) // "Choose from Photos" library picker
 
   // EXIF-derived context (date/time/place) extracted from the uploaded photos.
   const [photoMeta, setPhotoMeta] = useState({ summary: '', place: '', hasData: false })
   const [includeMeta, setIncludeMeta] = useState(true)
 
-  const [apiUrl, setUrl] = useState(getApiUrl())
-  const [apiKey, setKey] = useState(getApiKey())
-  const [demo, setDemo] = useState(!getApiUrl())
-  const [showSettings, setShowSettings] = useState(false)
+  // API endpoint/key come from env or saved settings (no in-page settings UI).
+  const [apiUrl] = useState(getApiUrl())
+  const [apiKey] = useState(getApiKey())
+  const [demo] = useState(!getApiUrl())
 
   const fileInput = useRef(null)
   const dragIndex = useRef(null)
@@ -41,7 +49,10 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
       return
     }
     ;(async () => {
-      const metas = await Promise.all(photos.map((p) => readPhotoMeta(p.file)))
+      // Uploaded items read EXIF from the File; library items carry stored EXIF.
+      const metas = await Promise.all(
+        photos.map((p) => (p.file ? readPhotoMeta(p.file) : Promise.resolve(storedToMeta(p.meta)))),
+      )
       if (cancelled) return
       const summary = await summarizePhotoMeta(metas)
       if (!cancelled) setPhotoMeta(summary)
@@ -60,6 +71,15 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
         file,
         url: URL.createObjectURL(file),
       }))
+      return [...prev, ...next]
+    })
+  }
+
+  // Add photos chosen from the existing library (data URLs + stored EXIF).
+  function addFromLibrary(items) {
+    setPhotos((prev) => {
+      const room = MAX_PHOTOS - prev.length
+      const next = (items || []).slice(0, room).map((it) => ({ id: ++uid, url: it.url, meta: it.meta || null }))
       return [...prev, ...next]
     })
   }
@@ -88,8 +108,13 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
     try {
       setApiUrl(demo ? '' : apiUrl)
       setApiKey(apiKey)
-      const photosBase64 = await Promise.all(photos.map((p) => fileToOrientedBase64(p.file)))
-      const previewDataUrls = await Promise.all(photos.map((p) => fileToDataUrl(p.file)))
+      // Uploaded items come from a File; library items are already data URLs.
+      const photosBase64 = await Promise.all(
+        photos.map((p) => (p.file ? fileToOrientedBase64(p.file) : Promise.resolve(p.url.replace(/^data:[^,]+,/, '')))),
+      )
+      const previewDataUrls = await Promise.all(
+        photos.map((p) => (p.file ? fileToDataUrl(p.file) : Promise.resolve(p.url))),
+      )
 
       // Fold the EXIF-derived details into the context when enabled.
       const baseContext = context.trim()
@@ -118,17 +143,6 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
   return (
     <div className="creator">
       <header className="creator-head">
-        <div className="creator-nav">
-          <button type="button" className="nav-link" onClick={onOpenPhotos}>
-            🖼️ Photos
-          </button>
-          <button type="button" className="nav-link" onClick={onOpenMemories}>
-            ✨ Memories
-          </button>
-          <button type="button" className="nav-link" onClick={onOpenSaved}>
-            📚 Saved
-          </button>
-        </div>
         <h1>
           <span className="logo-dot" /> Photobook
         </h1>
@@ -211,6 +225,21 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
             e.target.value = ''
           }}
         />
+
+        {/* Pick from the existing Photos library instead of uploading. */}
+        <div className="creator-pick-row">
+          <button type="button" className="creator-pick" onClick={() => fileInput.current?.click()}>
+            ⬆️ Upload photos
+          </button>
+          <button
+            type="button"
+            className="creator-pick"
+            onClick={() => setPicker(true)}
+            disabled={photos.length >= MAX_PHOTOS}
+          >
+            🖼️ Choose from Photos
+          </button>
+        </div>
       </section>
 
       {/* Story options */}
@@ -297,58 +326,66 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
         </label>
       </section>
 
-      {/* API settings */}
-      <section className="card">
-        <button type="button" className="settings-toggle" onClick={() => setShowSettings((s) => !s)}>
-          <span>API &amp; demo settings</span>
-          <span className="muted">{demo ? 'Demo mode' : 'Live API'} {showSettings ? '▲' : '▼'}</span>
-        </button>
-        {showSettings && (
-          <div className="settings-body">
-            <label className="toggle">
-              <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
-              <span>Demo mode (no server — narrate locally using your photos)</span>
-            </label>
-            <label className="field">
-              <span>Photo book API URL</span>
-              <input
-                type="url"
-                value={apiUrl}
-                disabled={demo}
-                placeholder={DEFAULT_API_URL || 'https://your-server.example.com/api/photobook'}
-                onChange={(e) => setUrl(e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span>API key (Bearer token)</span>
-              <input
-                type="password"
-                value={apiKey}
-                disabled={demo}
-                placeholder="dev-secret"
-                autoComplete="off"
-                onChange={(e) => setKey(e.target.value)}
-              />
-            </label>
-            <p className="muted small">
-              The app POSTs the documented JSON payload to this URL and renders the response. The URL is saved in
-              your browser only.
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* Pull photos from a Capsyl-style Memory instead of uploading. */}
-      <button type="button" className="memories-cta" onClick={onOpenMemories}>
-        <span aria-hidden="true">✨</span>
-        Start from a Memory
-        <span className="memories-cta-sub">Browse example memories</span>
-      </button>
-
       <button className="cta" disabled={!canSubmit} onClick={submit}>
         {busy ? 'Working…' : photos.length ? `Make my photo book (${photos.length})` : 'Add photos to begin'}
       </button>
+
+      {picker && (
+        <LibraryPicker onClose={() => setPicker(false)} onAdd={addFromLibrary} />
+      )}
     </div>
+  )
+}
+
+// Multi-select picker over the existing photo library (portaled above the page).
+function LibraryPicker({ onAdd, onClose }) {
+  const [photos, setPhotos] = useState([])
+  const [sel, setSel] = useState(() => new Set())
+  useEffect(() => {
+    listPhotos()
+      .then(setPhotos)
+      .catch(() => setPhotos([]))
+  }, [])
+  function toggle(id) {
+    setSel((prev) => {
+      const n = new Set(prev)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+  }
+  const chosen = photos.filter((p) => sel.has(p.id))
+  return createPortal(
+    <div className="tb-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="picker">
+        <div className="picker-head">
+          <strong>{sel.size ? `${sel.size} selected` : 'Choose from Photos'}</strong>
+          <button onClick={onClose}>Cancel</button>
+        </div>
+        {photos.length === 0 ? (
+          <p className="picker-empty">No photos in your library yet — add some in the Photos tab first.</p>
+        ) : (
+          <div className="picker-grid">
+            {photos.map((p) => (
+              <button key={p.id} className={sel.has(p.id) ? 'sel' : ''} onClick={() => toggle(p.id)}>
+                <img src={p.url} alt="" loading="lazy" />
+                {sel.has(p.id) && <span className="picker-check">✓</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          className="picker-add"
+          disabled={!sel.size}
+          onClick={() => {
+            onAdd(chosen.map((p) => ({ url: p.url, meta: p.meta })))
+            onClose()
+          }}
+        >
+          {sel.size ? `Add ${sel.size}` : 'Select photos to add'}
+        </button>
+      </div>
+    </div>,
+    document.body,
   )
 }
 

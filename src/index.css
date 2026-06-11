@@ -3254,3 +3254,59 @@ button {
   padding: 12px;
   border-radius: 14px;
 }
+
+/* Creator: upload / choose-from-library buttons + library picker */
+.creator-pick-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.creator-pick {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 12px;
+}
+.creator-pick:disabled {
+  opacity: 0.45;
+}
+.picker-add {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px;
+  margin: 10px;
+  border-radius: 14px;
+}
+.picker-add:disabled {
+  opacity: 0.4;
+}
+.picker-grid button {
+  position: relative;
+}
+.picker-grid button.sel img {
+  transform: scale(0.86);
+}
+.picker-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
