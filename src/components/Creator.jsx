@@ -4,6 +4,7 @@ import { VIBES, STYLES, MAX_PHOTOS, PERSPECTIVES } from '../config'
 import { fileToOrientedBase64, getApiUrl, setApiUrl, getApiKey, setApiKey } from '../api'
 import { readPhotoMeta, summarizePhotoMeta } from '../metadata'
 import { listPhotos } from '../photoStore'
+import { analyzeAlbum } from '../insightsClient'
 
 let uid = 0
 
@@ -33,8 +34,31 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
   const [apiKey] = useState(getApiKey())
   const [demo] = useState(!getApiUrl())
 
+  // AI album analysis: auto title/context + "What we noticed" insights.
+  const [insights, setInsights] = useState(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const titleTouched = useRef(false)
+  const contextTouched = useRef(false)
+
   const fileInput = useRef(null)
   const dragIndex = useRef(null)
+
+  async function analyze() {
+    if (!photos.length || analyzing) return
+    setAnalyzing(true)
+    try {
+      // analyzeAlbum needs data/http URLs; uploaded items are blob URLs, so
+      // convert those to data URLs first.
+      const urls = await Promise.all(photos.map((p) => (p.file ? fileToDataUrl(p.file) : Promise.resolve(p.url))))
+      const r = await analyzeAlbum(urls)
+      if (!r) return
+      setInsights(r)
+      if (r.title && !titleTouched.current) setTitle(r.title)
+      if (r.context && !contextTouched.current) setContext(r.context)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   // Revoke object URLs on unmount to avoid leaks.
   useEffect(() => () => photos.forEach((p) => URL.revokeObjectURL(p.url)), []) // eslint-disable-line
@@ -242,6 +266,56 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
         </div>
       </section>
 
+      {/* AI album insights — also auto-fills title + context below. */}
+      {photos.length > 0 && (
+        <section className="card insights-card">
+          <div className="card-title">
+            <h2>✨ What we noticed</h2>
+            <button className="insights-regen" onClick={analyze} disabled={analyzing}>
+              {analyzing ? 'Analyzing…' : insights ? 'Regenerate' : 'Analyze'}
+            </button>
+          </div>
+
+          {analyzing && !insights && <p className="insights-loading">Looking through your photos…</p>}
+
+          {!analyzing && !insights && (
+            <p className="insights-empty">
+              Tap <strong>Analyze</strong> and we’ll suggest a title, context and a few insights from your photos.
+            </p>
+          )}
+
+          {insights && (
+            <div className="insights-body">
+              {insights.themes.length > 0 && (
+                <div className="insights-themes">
+                  {insights.themes.map((t) => (
+                    <span key={t} className="insights-tag">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {insights.mood && (
+                <p className="insight-line">
+                  <span className="insight-label">Mood</span> {insights.mood}
+                </p>
+              )}
+              {insights.highlight && (
+                <p className="insight-line">
+                  <span className="insight-label">Highlight</span> {insights.highlight}
+                </p>
+              )}
+              {insights.people && (
+                <p className="insight-line">
+                  <span className="insight-label">People</span> {insights.people}
+                </p>
+              )}
+              <p className="insights-foot">Title and context below were suggested from these photos — edit them anytime.</p>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Story options */}
       <section className="card">
         <div className="card-title">
@@ -254,7 +328,10 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
             type="text"
             value={title}
             placeholder="Our trip to Bonneville Salt Flats"
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              titleTouched.current = true
+              setTitle(e.target.value)
+            }}
           />
         </label>
 
@@ -264,7 +341,10 @@ export default function Creator({ onGenerate, error, buildPayload, onOpenSaved, 
             rows={3}
             value={context}
             placeholder="During Memorial Day we went to the Bonneville Salt Flats as a family."
-            onChange={(e) => setContext(e.target.value)}
+            onChange={(e) => {
+              contextTouched.current = true
+              setContext(e.target.value)
+            }}
           />
         </label>
 
