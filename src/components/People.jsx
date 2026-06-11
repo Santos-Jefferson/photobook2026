@@ -222,12 +222,14 @@ function PhotoPicker({ onPick, onClose }) {
         {photos.length === 0 ? (
           <p className="picker-empty">Add photos first, then come back to tag people.</p>
         ) : (
-          <div className="picker-grid">
-            {photos.map((p) => (
-              <button key={p.id} onClick={() => onPick(centerSquare(p.url))}>
-                <img src={p.url} alt="" loading="lazy" />
-              </button>
-            ))}
+          <div className="picker-scroll">
+            <div className="picker-grid">
+              {photos.map((p) => (
+                <button key={p.id} onClick={() => onPick(centerSquare(p.url))}>
+                  <img src={p.url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

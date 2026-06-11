@@ -444,13 +444,15 @@ function LibraryPicker({ onAdd, onClose }) {
         {photos.length === 0 ? (
           <p className="picker-empty">No photos in your library yet — add some in the Photos tab first.</p>
         ) : (
-          <div className="picker-grid">
-            {photos.map((p) => (
-              <button key={p.id} className={sel.has(p.id) ? 'sel' : ''} onClick={() => toggle(p.id)}>
-                <img src={p.url} alt="" loading="lazy" />
-                {sel.has(p.id) && <span className="picker-check">✓</span>}
-              </button>
-            ))}
+          <div className="picker-scroll">
+            <div className="picker-grid">
+              {photos.map((p) => (
+                <button key={p.id} className={sel.has(p.id) ? 'sel' : ''} onClick={() => toggle(p.id)}>
+                  <img src={p.url} alt="" loading="lazy" />
+                  {sel.has(p.id) && <span className="picker-check">✓</span>}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <button
