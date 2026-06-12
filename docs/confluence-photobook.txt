@@ -1,247 +1,213 @@
-h1. Photobook — Design, Architecture & UI
+h1. Photobook — What's New (MVP / Demo)
 
 {info:title=One-liner}
-Turn a user's library photos — or a single *Memory* — into a swipeable, AI‑narrated photo‑book story. Mobile‑first, presented as a full Capsyl‑style phone shell (Home · Explore · Photos · Memories · Library) and built on the Synchronoss *Genius Narration API*.
+*Photobook* is the new layer we built on top of *Capsyl*: turn a *Memory*, a *Photos* selection, or a fresh upload into a swipeable, AI‑narrated photo‑book story — then refine it by chat, re‑style it, and export it to share.
 {info}
+
+{note:title=Scope of this page}
+This page only covers the *new* capabilities we demo. Everything else (Home, Photos, Memories browsing, Explore, Library, top bar, etc.) already exists in Capsyl and is reused as‑is.
+{note}
 
 {toc:maxLevel=2|minLevel=2}
 
 ----
 
-h2. 1. Product overview
+h2. What we're presenting
 
-Photobook takes a handful of photos and weaves them into an illustrated, narrated story the user can swipe through, translate, narrate aloud, edit photo‑by‑photo, save, and share. The app renders as a centered phone column at every screen size, so visiting the URL on a laptop feels exactly like the Capsyl mobile app.
+# *Photobook from a Memory* — one tap.
+# *Photobook from Photos* — multi‑select → one tap.
+# *Photobook from scratch* — full options + AI insights & auto title/context.
+# *Chat on each photobook page* — edit a page in natural language.
+# *Chat on a single photo* — one‑tap restyle / quick edits.
+# *Edit photobook at the end* — re‑generate with a new style + mood.
+# *Narration* — play the story aloud, pick language & voice.
+# *Export & share* — PDF · HTML · narrated 9:16 video.
 
-*Two ways to create:*
-* *One‑tap (frictionless):* open a *Memory* or multi‑select in *Photos* → tap *Create Photobook* → generates immediately with sensible defaults (*Retro Toons* style, *heartwarming* mood, *AI Storyteller*). EXIF date/place is folded in automatically.
-* *From scratch (full control):* the *Creator* page — upload photos or *Choose from Photos* (the library) → AI *"What we noticed"* insights + auto‑suggested title/context → pick mood, art style, narrator perspective, stylize, and an optional *Bedtime story* mode → generate.
-
-*Then:* swipe a full‑screen viewer with narration, translation and per‑photo editing → from the final page *Save*, *Share & export*, or *Edit photobook* (re‑generate with a new style + mood) → exports as PDF, self‑contained HTML, or a narrated 9:16 Stories video.
-
-||Pillar||What it delivers||
-|Home|Dashboard of Recent Photos, Favorites, Photobooks and Memories; global top bar (search · cloud‑upload · profile).|
-|Photos|Capsyl‑style photo library (IndexedDB). Grid, favorites filter, multi‑select → *Create Photobook*, and a maximized detail view with a *Chat or book* entry point.|
-|Explore → People|Face detection across the library (browser Shape Detection API); tag faces with names, grouped per person.|
-|Memories|Capsyl‑style gallery of photo clusters. Open one → *Create Photobook* in a tap. (Creating a memory lives behind the user profile, since Capsyl has no "add memory" today.)|
-|Generate|2–5 photos + vibe + image style + narrator perspective; EXIF date/place folded into the prompt. Returns opening · per‑photo caption + narrative · closing, with stylized images.|
-|Insights & auto‑fill|"What we noticed" (themes, mood, highlight, people) plus AI‑suggested title + context, synthesized from the chosen photos.|
-|Bedtime mode|Optionally retells the whole story gently, for reading to a child.|
-|Narration|Neural TTS with selectable language and voice (gender) via a touch‑friendly bottom sheet.|
-|Translate|Translate the whole story on the fly (internal LLM).|
-|Perspective|Retell as AI storyteller / me / child / friend / parent (internal LLM).|
-|Photo Chat|Per‑photo edits in natural language. On a standalone photo: one‑tap style presets (Retro Toons, Anime, Comic Book…) + quick edits (remove/blur background) + revert + on‑demand suggestions. In a story: text "memory actions" + Genius greeting cards.|
-|Edit photobook|From the closing page, re‑generate the whole book with a new art style + mood (reuses the original photos).|
-|Saved (Library)|Local library of finished photobooks (IndexedDB), reopenable any time.|
-|Export & share|PDF (collage covers), self‑contained HTML (offline narration), narrated 9:16 Stories video, WhatsApp, Instagram cover.|
+{tip:title=Suggested demo order (≈3 min)}
+Memory → Photobook *(the hero)* → peek the *Photos* multi‑select entry → open a *Saved* book and *Chat‑edit* a page (+ greeting card) → *Edit photobook* (restyle) → *Narrate* + *Share → video*. Close with *Chat on a single photo* (one‑tap Anime). Pre‑generate one book so you never wait on the API live.
+{tip}
 
 ----
 
-h2. 2. Design principles
+h2. 1. Photobook from a Memory (one tap)
 
-* *Mobile‑only, by design* — the app is always a centered phone column, even on desktop, so everyone gets the Capsyl mobile experience behind a single URL. Full‑bleed imagery, thumb‑reachable controls, bottom sheets, safe‑area aware CTAs.
-* *Feels like Capsyl* — real {{wl-icon}} glyphs in the bottom nav (Home · Explore · Photos · Memories · Library), the navy nav bar, teal active state, portrait Memory cards, the search/cloud/profile top bar.
-* *One tap to delight* — a Memory or a Photos selection becomes a finished, narrated story in a single action; choices are reserved for the "from scratch" path.
-* *Progressive, resilient* — gracefully falls back (browser TTS when the narration server is absent; original photo when no styled image returns; manual title/context when the analyze service is unreachable, with a visible notice).
-* *Privacy by default* — photos and text only leave the browser to reach the Genius API and our own {{/api/*}} endpoints; saved books, memories, photos and people live locally in IndexedDB.
-
-h3. Visual language
-
-||Token||Value||Usage||
-|Accent (Capsyl cyan)|#0aa1dd|Primary actions, links, accents|
-|Active nav (teal)|#14b8c7|Selected bottom‑nav tab (icon + label)|
-|Nav bar (mobile)|#232c3a (navy)|Capsyl‑style bottom navigation|
-|Surface|#ffffff on a soft blue gradient (phone column over a neutral backdrop)|Cards, sheets|
-|Text|#16202c / muted #64748b|Headings / secondary|
-|Cover style|All‑photo *collage* band over a light gradient, title as text|Opening/closing covers (on‑screen, HTML, PDF, video — kept consistent)|
-
-----
-
-h2. 3. System architecture
-
-{noformat}
-┌──────────────────────────── Browser (React SPA, phone shell) ───────────────────────────┐
-│  TopBar (search · cloud‑upload · profile→"Add a memory")                                  │
-│                                                                                           │
-│  Home        Explore→People     Photos            Memories         Creator (from scratch) │
-│  dashboard   face tag/name      library (grid,    cluster gallery  upload / Choose from   │
-│              (IndexedDB)        multi‑select)     (IndexedDB)      Photos · insights ·     │
-│                   │                  │                 │           auto title · options · │
-│                   │                  │  Create         │ Create    bedtime                │
-│                   │                  ▼  Photobook       ▼ Photobook        │               │
-│                   │            generateQuick (defaults)  │           buildPayload          │
-│                   │                       └──────┬───────┘                 │               │
-│                   ▼                              ▼                         ▼               │
-│   ┌──────────────────────── App.jsx (view state machine) ──────────────────────────┐      │
-│   │   handleGenerate → normalizeBook → perspective rewrite → (optional) bedtime     │      │
-│   └─────────────────────────────────────┬───────────────────────────────────────────┘     │
-│                                          ▼                                                 │
-│                                     StoryViewer                                           │
-│     buildSlides · narration · translation · PhotoChat · Edit photobook · Share/export      │
-│        │            │             │            │            │              │               │
-└────────┼────────────┼─────────────┼────────────┼────────────┼──────────────┼───────────────┘
-         ▼            ▼             ▼            ▼            ▼              ▼
- Genius /photobook  /api/narrate  /api/translate /api/perspective  /api/rewrite  Genius
- (generate+style)   (msedge‑tts)  (Qwen)         (Qwen)            (Qwen)        photo‑chat /
-                                                 insights+bedtime+auto‑title     greeting‑card
-{noformat}
-
-h3. Tech stack
-
-* *Frontend:* React 18 + Vite 5, hand‑written CSS. Navigation is a small {{view}} state machine in {{App.jsx}} (no router). Overlays (search, profile, pickers) render via React portals to escape the sticky top bar's stacking context.
-* *Backend:* a single Node {{http}} server ({{server/index.js}}) that serves the built SPA *and* the {{/api/*}} endpoints, sharing {{lib/narrate.js}}. For local development, an equivalent Vite middleware ({{vite.config.js}}) serves the same {{/api/*}} routes, so {{npm run dev}} runs the full app without a separate server.
-* *AI / external:* *Genius Narration API* (photobook, photo‑chat, greeting cards, image stylization); *internal LLM (Qwen)* (translate, perspective, free‑form rewrite — which powers bedtime, insights and auto title/context); *msedge‑tts* (neural narration).
-* *Browser libs:* {{exifr}} (EXIF/GPS), {{jspdf}} + {{html2canvas}} (PDF / IG cover), Canvas + {{MediaRecorder}} (in‑browser narrated video), browser Shape Detection {{FaceDetector}} (People).
-* *Storage:* IndexedDB (saved books, memories, photo library, people) + localStorage (display name, optional API settings).
-
-h3. Generation data flow
-
-# Photos come from the *Photos* library or *Memory* (already JPEG data URLs with stored EXIF), or from the *Creator* (uploaded {{File}}s, EXIF read before re‑encode, or picked from the library).
-# {{buildPayload}} assembles {{{ photos, vibe, style, stylize_images, title, context, perspective }}} and POSTs it to the Genius *photobook* endpoint (Bearer auth). The quick paths use defaults; the Creator uses the chosen options.
-# {{normalizeBook}} unwraps the response and flags truncation; uploaded/original photos are kept as fallbacks (and enable *Edit photobook* re‑generation later).
-# The story is optionally *retold in the chosen perspective* and/or softened into a *bedtime* read via the internal LLM.
-# {{StoryViewer}} renders slides; narration, translation, insights and per‑photo edits are fetched on demand.
-
-h3. Endpoints
-
-||Method · Route||Purpose||Backed by||
-|POST /v1/genius/photobook|Generate a story from photos|Genius API|
-|POST /v1/genius/photo-chat/analyze · message · ask|Per‑photo analyze / edit / Q&A (also powers album insights)|Genius API|
-|POST /v1/genius/greeting-card|Greeting card (headline/message/closing + image)|Genius API|
-|POST /api/narrate|TTS audio for narration|msedge‑tts|
-|POST /api/translate|Translate story text|internal LLM (Qwen)|
-|POST /api/perspective|Retell in a narrator POV|internal LLM (Qwen)|
-|POST /api/rewrite|Free‑form rewrite — bedtime, insights synthesis, auto title/context, memory actions|internal LLM (Qwen)|
-|GET /healthz|Liveness/readiness probe|—|
-
-----
-
-h2. 4. Deployment (Bitbucket → Bamboo → Kubernetes)
-
-* *Source control:* Bitbucket / Stash.
-* *CI/CD:* a *Bamboo* plan builds the multi‑stage Docker image ({{Dockerfile}}: {{npm ci}} + {{vite build}} → slim Node runtime with production deps only), tags it from {{.release_number}}, and deploys to *Kubernetes* via the Helm chart under {{deployment/helm}} ({{.helm_release_number}}). Build/dockerize/deploy steps are wired through the {{Makefile}}.
-* *Runtime:* a single container runs {{node server/index.js}}, serving the built {{dist/}} SPA *and* the {{/api/*}} endpoints. Kubernetes liveness/readiness use {{GET /healthz}}.
-* *Config:* client config (Genius API URL/key) is baked at build time via Vite env vars ({{VITE_PHOTOBOOK_API_URL}}, {{VITE_PHOTOBOOK_API_KEY}}); the internal LLM endpoint is overridable via {{TRANSLATE_API_URL}} / {{TRANSLATE_MODEL}}; narration needs the msedge‑tts dependency reachable from the pod.
-* *Local dev:* {{npm run dev}} (Vite, with the {{/api/*}} middleware) for the full app, or {{npm run share}} (build + Node server) to mirror production.
-
-----
-
-h2. 5. UI mockups (wireframes)
-
-h3. 5.1 Home + bottom nav
+Open a Memory → *Create photobook*. No questions asked — it generates immediately with sensible defaults (*Retro Toons* style, *heartwarming* mood, *AI Storyteller*), folding the photos' date/place into the prompt automatically.
 
 {noformat}
 ┌───────────────────────────────┐
-│ 🔍            ☁＋  | 👤 Hi, …  │  ← global top bar
-│ Recent Photos        See all   │
-│ [▢][▢][▢][▢]                   │
-│ Recent Favorites     See all   │
-│ [♥][♥][♥][♥]                   │
-│ Recent Photobooks    See all   │
-│ (▤ rail of covers)             │
-│ Recent Memories      See all   │
-│ (▤ rail of memory cards)       │
-│        ✨ Create a photobook    │
-│ Home  Explore  Photos  Mem  Lib│  ← navy nav, teal active
+│ ‹ Memories                     │
+│ ▓▓▓▓▓▓▓ Sofia's Birthday ▓▓▓▓ │  ← memory hero
+│ [▢][▢][▢][▢][▢]               │  ← the cluster's photos
+│ 5 photos · Jun 2026            │
+│  [ ✨ Create photobook ]        │ → generates instantly (defaults)
 └───────────────────────────────┘
 {noformat}
 
-h3. 5.2 Photos (library, multi‑select)
+----
+
+h2. 2. Photobook from Photos (multi‑select)
+
+In *Photos*, enter select mode, pick 2–5 photos → the action bar's primary action is *Create photobook*. Same one‑tap generation as a Memory.
 
 {noformat}
 ┌───────────────────────────────┐
-│ ‹  Photos               ♥  ✓ ＋ │
-│ [▢][▢][▢]                      │
-│ [▢][▢][▢]   … (tap = open)     │
-│ — select mode —                │
 │ 3 selected · ready to create   │
-│ [📖 Create photobook][♥][⤴][🗑]│  ← action bar
-└───────────────────────────────┘
-Tap a photo → maximized detail (back/fav/delete · Album/Share/
-"Chat or book"/Info). "Chat or book" → chat (one‑tap styles) or
-start a photobook.
-{noformat}
-
-h3. 5.3 Explore → People
-
-{noformat}
-┌───────────────────────────────┐
-│ People                         │
-│ (◯ Mom)(◯ Dad)(◯ +)            │  ← named faces
-│ 🔍 Find faces in my photos     │
-│ Faces in your photos:          │
-│ (◯)(◯)(◯)(◯)  tap → name       │
+│ [▣][▣][▢]                      │
+│ [▣][▢][▢]                      │
+│ [📖 Create photobook][♥][⤴][🗑]│  ← action bar (📖 = primary)
 └───────────────────────────────┘
 {noformat}
 
-h3. 5.4 Creator (from scratch)
+> A single photo's detail view also offers *Chat or book*; "book" drops into this
+> multi‑select pre‑picked (a photobook needs 2–5 photos).
+
+----
+
+h2. 3. Photobook from scratch (full control + AI)
+
+The *Creator* is the deliberate path. Upload photos *or* *Choose from Photos* (the library), let the AI suggest everything, then tune the options.
+
+* *✨ What we noticed* — themes, mood, highlight and people, read from the chosen photos.
+* *Auto title + context* — suggested from the photos (editable; "Regenerate" to vary).
+* *From your photos* — date/place (EXIF) folded into the context.
+* *Options* — mood, art style, narrator perspective, stylize, and *🌙 Bedtime story* (retell gently for a child).
 
 {noformat}
 ┌───────────────────────────────┐
 │        ● Photobook             │
 │  Your photos            3/5    │
 │  [▢][▢][▢]                     │
-│  [⬆ Upload] [🖼 Choose from …] │
+│  [⬆ Upload]  [🖼 Choose from …]│
 │  ✨ What we noticed   [Analyze] │
 │   #family #travel · Mood: warm │
-│  Title […]  Context […]        │
-│  Mood (▾)  Style (▾)  POV (▾)  │
-│  ☑ Stylize   🌙 Bedtime story  │
-│  ☑ From your photos: <date·loc>│
+│   Highlight: the cake moment   │
+│  Title  [ A Day at the Lake ]  │  ← auto‑filled
+│  Context[ A sunny family … ]   │  ← auto‑filled
+│  Mood(▾) Style(▾) Perspective(▾)│
+│  ☑ Stylize     🌙 Bedtime story │
+│  ☑ From your photos: Jun · Lisbon│
 │  [   Make my photo book (3)  ] │
 └───────────────────────────────┘
 {noformat}
 
-h3. 5.5 Story viewer + final page
+----
+
+h2. 4. Chat on each photobook page
+
+Inside the story, every photo page has *✦ Edit* → a chat panel scoped to that page:
+restyle/edit the image in natural language, apply a style preset, run *memory actions*
+(Child's POV / Funnier / More emotional / Translate), and generate a *Genius greeting card*.
+Results apply live to the page (image, caption, or narrative).
+
+{noformat}
+┌──────── Edit this photo ───────┐
+│ [Child's POV][Funnier][More…]  │  ← memory actions (text)
+│ [Translate ▾]   [✨ Greeting]   │
+│ you: make it watercolor        │
+│ ai:  ✓ applied (Watercolor)    │
+│      [Use as caption][…narr.]  │
+│ (style ▾) [Apply]  type…  [Send]│
+└────────────────────────────────┘
+{noformat}
+
+----
+
+h2. 5. Chat on a single photo
+
+From a photo's maximized detail view → *Chat or book → Chat*. Because there's no story
+text here, it shows *one‑tap actions* that give a fast visual result, plus *Revert*.
+
+{noformat}
+┌──────── Edit this photo ───────┐
+│ 🎨RetroToons ✨Anime 💥Comic … │  ← one‑tap style presets
+│ 🖌Watercolor 🌈ColorPop 🔧Enhance│
+│ ✂Remove background  🌫Blur bg  │  ← quick edits
+│ 💡 Suggest edits for this photo│  ← on‑demand (not automatic)
+│ (style ▾) [Apply]  type…  [Send]│   ↩ Revert
+└────────────────────────────────┘
+{noformat}
+
+----
+
+h2. 6. Edit photobook at the end
+
+On the closing page, *✨ Edit photobook (style & mood)* re‑generates the whole story with a
+new art style and mood, reusing the original photos. Works on a freshly generated book *or*
+a saved one.
 
 {noformat}
 ┌───────────────────────────────┐
-│ ▆▆▆▆ ▆▆ ▁▁ ▁▁  (progress)      │
-│   whole photo over blurred fill│
-│   “Hands linked, hearts whole.”│
-│   We arrived as the mist…      │
-│                          ✦ Edit│
-│ [▶ Narrate] [🌐 EN · Female]   │
+│           the end              │
+│         [ collage ]            │
+│ [♡ Save] [⤓ Share & export]    │
+│ [ ✨ Edit photobook (style &   │
+│        mood) ]                 │ → pick Style + Mood → Re‑generate
+│ [ Make another ]               │
 └───────────────────────────────┘
-Final page:
- [♡ Save] [⤓ Share & export]
- [✨ Edit photobook (style & mood)]  [Make another]
 {noformat}
 
-h3. 5.6 Photo Chat
+----
+
+h2. 7. Narration
+
+A bottom bar plays the story aloud (neural TTS), advancing slide‑by‑slide. A sheet picks the
+*language* (the visible text translates to match) and the *voice* (Female / Male / Child).
+Falls back to the browser voice if the narration server isn't reachable.
 
 {noformat}
-┌──────── Edit this photo ───────┐   standalone (a library photo)
-│ 🎨RetroToons ✨Anime 💥Comic … │  ← one‑tap style presets
-│ ✂Remove bg  🌫Blur bg          │
-│ 💡 Suggest edits for this photo│  ← on‑demand
-│ (style ▾) [Apply]  type…  [Send]│   ↩ Revert
+┌───────────────────────────────┐
+│  … story slide …               │
+│ [▶ Narrate]  [🌐 EN · Female]  │  ← narration bar
+└───────────────────────────────┘
+        ┌──────── Narration ────────┐
+        │ LANGUAGE [EN•][PT][ES][…] │
+        │ VOICE    [Female•][Male]  │
+        │            [   Done   ]   │
+        └────────────────────────────┘
+{noformat}
+
+----
+
+h2. 8. Export & share
+
+From the final page, *⤓ Share & export*:
+
+* *PDF* — print‑ready, with all‑photo collage covers.
+* *HTML* — a single self‑contained file with the photos *and offline narration* baked in.
+* *Narrated video* — a 9:16 Stories clip (collage covers + each photo + narration), styled
+  to match the on‑screen story; ready for *WhatsApp / Instagram*.
+
+{noformat}
+┌──────── Share & export ────────┐
+│ [ ⬇ PDF ]                       │
+│ [ ⬇ HTML (offline narration) ] │
+│ [ ⬇ Narrated video (9:16) ]    │
+│ [ WhatsApp ] [ Instagram cover ]│
 └────────────────────────────────┘
-In a story page: text "memory actions" (Child's POV / Funnier /
-Translate / ✨ Greeting card) instead of the style presets.
 {noformat}
 
 ----
 
-h2. 6. Storage model
+h2. How it works (brief)
 
-||Store||Type||Contents||
-|{{photobook}} (meta + books)|IndexedDB|Saved photobooks — small meta for the grid + full serialized book (images inline as base64, original photos retained for re‑generation)|
-|{{photobook_photos}}|IndexedDB|Photo library — JPEG data URLs + stored EXIF (date/GPS) + favorite flag (+ original, when edited)|
-|{{photobook_memories}}|IndexedDB|User‑created memories (title + photos as JPEG data URLs + aligned EXIF)|
-|{{photobook_people}}|IndexedDB|Named people (name + round avatar thumbnail)|
-|{{pb_display_name}}|localStorage|Profile display name|
-|{{photobook.apiUrl / apiKey}}|localStorage|Optional Genius API settings (env‑baked by default)|
+React 18 + Vite SPA, served as a Capsyl‑style phone column. Generation and per‑photo edits
+call the *Genius Narration API*; narration, translation, perspective and the free‑form rewrites
+that power *bedtime / insights / auto title* go through our own {{/api/*}} endpoints
+(msedge‑tts + internal Qwen LLM). Saved books, memories, photos and people live locally in
+IndexedDB.
 
-----
+||Route||Purpose||Backed by||
+|POST /v1/genius/photobook|Generate a story from photos|Genius API|
+|POST /v1/genius/photo-chat/analyze · message · ask|Per‑photo edit / Q&A / insights|Genius API|
+|POST /v1/genius/greeting-card|Greeting card|Genius API|
+|POST /api/narrate|Narration audio|msedge‑tts|
+|POST /api/translate · /api/perspective · /api/rewrite|Translate · POV · rewrite (bedtime/insights/title)|internal LLM (Qwen)|
 
-h2. 7. Roadmap
-
-* Native Capsyl *Memories* integration — pull real Memory clusters instead of uploading.
-* *People*: true cross‑photo face *recognition* (embeddings) for automatic same‑person grouping, beyond browser face detection + manual naming.
-* Album insights surfaced inside the saved book / shared video; richer greeting‑card composition.
-* Mobile packaging — installable *PWA* and/or a thin *Capacitor* Android shell over the deployed URL.
-* Server‑side persistence and premium TTS voices (SLA).
+*Deployment:* source in *Bitbucket / Stash*; a *Bamboo* plan builds the Docker image and
+deploys to *Kubernetes* (Helm chart in {{deployment/helm}}). One container runs
+{{server/index.js}}, serving the SPA *and* {{/api/*}}; {{/healthz}} backs the probes.
 
 {tip:title=Status}
-MVP complete: Capsyl‑style shell (Home/Explore/Photos/Memories/Library), one‑tap and from‑scratch generation, album insights + auto title/context, bedtime mode, narration/translation/perspective, Photo Chat (style presets + greeting cards), People tagging, Saved library, Edit‑photobook re‑generation, and consistent exports (HTML · PDF · narrated video). Deployed on Kubernetes via Bamboo from Bitbucket.
+MVP complete and demo‑ready: photobook from Memory / Photos / scratch, page‑level and
+single‑photo chat, end‑of‑book re‑style, narration, and exports (PDF · HTML · narrated video).
 {tip}
