@@ -26,7 +26,6 @@ with a heartfelt sign‑off.
 - [API surface](#-api-surface)
 - [Data & storage](#-data--storage)
 - [Run locally + share a public URL](#-run-locally--share-a-public-url)
-- [Deploy to Vercel](#-deploy-to-vercel)
 - [Deploy on Kubernetes](#-deploy-on-kubernetes-docker--helm)
 - [Notes & roadmap](#-notes--roadmap)
 
@@ -55,8 +54,8 @@ with a heartfelt sign‑off.
 - **Frontend:** React 18 + Vite 5, hand‑written CSS (no UI framework). Navigation is
   a small `view` state machine in `App.jsx` (no router).
 - **Backend:** a tiny Node `http` server (`server/index.js`) that serves the built
-  SPA **and** a few `/api/*` endpoints. The same handlers are also exposed as
-  **Vercel serverless functions** under `api/*`, sharing the core in `lib/narrate.js`.
+  SPA **and** a few `/api/*` endpoints. For local development, an equivalent Vite
+  middleware serves the same `/api/*` routes, sharing the core in `lib/narrate.js`.
 - **AI / external services:**
   - **Genius Narration API** — photobook generation, photo‑chat edits, greeting
     cards, image stylization.
@@ -127,7 +126,7 @@ secrets stay server‑side:
 photobook2026/
 ├── server/index.js          # Node server: serves SPA + /api/* (default PORT 5050)
 ├── lib/narrate.js           # Shared core: TTS, translate, perspective, rewrite
-├── api/                     # Vercel serverless wrappers (narrate/translate/…)
+├── api/                     # serverless wrappers (narrate/translate/…), shared core
 ├── src/
 │   ├── App.jsx              # View state machine (create | memories | saved | story)
 │   ├── components/
@@ -267,8 +266,8 @@ a finished book to the local library.
 
 ## 🌐 Run locally + share a public URL
 
-Runs the whole app **and** the natural‑voice narration on your machine (no keys, no
-Vercel), then exposes a public link.
+Runs the whole app **and** the natural‑voice narration on your machine (no keys),
+then exposes a public link.
 
 ```bash
 npm install
@@ -290,21 +289,20 @@ Notes:
 
 ---
 
-## ▲ Deploy to Vercel
+## 🔁 CI/CD (Bitbucket → Bamboo → Kubernetes)
 
-Zero‑config (Vite auto‑detected; `vercel.json` pins the build).
+Source lives in **Bitbucket / Stash**. A **Bamboo** plan builds the Docker image and
+deploys it to **Kubernetes** (see [Deploy on Kubernetes](#-deploy-on-kubernetes-docker--helm)
+for the chart). Build / dockerize / deploy steps are wired through the `Makefile`.
 
-1. Vercel → **Add New… → Project** → import the repo.
-2. Framework **Vite** · Build `npm run build` · Output `dist` (auto‑filled).
-3. Production branch publishes the main URL; other branches/PRs get **Preview URLs**.
-
-CLI: `npm i -g vercel` then `vercel` (preview) / `vercel --prod`.
-
-Environment variables (Project → Settings → Environment Variables):
+Build‑time config (baked into the client by Vite):
 
 ```
 VITE_PHOTOBOOK_API_URL=https://your-server.example.com/v1/genius/photobook
 VITE_PHOTOBOOK_API_KEY=your-key
+# Internal LLM (translate/perspective/rewrite) — override if needed:
+# TRANSLATE_API_URL=https://your-llm.example.com/v1
+# TRANSLATE_MODEL=qwen3
 # Optional narration voice overrides (defaults are fine):
 # EDGE_VOICE_EN=en-US-AriaNeural
 # EDGE_VOICE_PT=pt-BR-FranciscaNeural
@@ -313,10 +311,6 @@ VITE_PHOTOBOOK_API_KEY=your-key
 
 > ⚠️ `VITE_`‑prefixed vars are bundled into the **public** client JS — don’t ship a
 > real secret this way; use a throwaway key or a backend proxy.
->
-> ⚠️ If the Genius API host is on a private network, a teammate opening the public
-> URL won’t be able to reach it (their browser calls it directly). For those
-> reviewers, use **Demo mode** or a **Share → Download HTML** export.
 
 ---
 
