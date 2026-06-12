@@ -29,6 +29,17 @@ Memory → Photobook *(the hero)* → peek the *Photos* multi‑select entry →
 
 ----
 
+h2. Design principles
+
+* *Mobile‑only, by design* — the app is always a centered phone column, even on desktop, so everyone gets the Capsyl mobile feel behind a single URL.
+* *Feels like Capsyl* — it slots into the existing app (Memories → Photobook, a *Create Photobook* action in Photos), reusing Capsyl's shell, icons and navy/teal nav.
+* *One tap to delight* — a Memory or a Photos selection becomes a finished, narrated story in a single action; choices are reserved for the deliberate "from scratch" path.
+* *AI does the heavy lifting* — it reads the photos to suggest title, context, themes and mood, and can soften the whole story into a bedtime read.
+* *Resilient* — graceful fallbacks everywhere (browser TTS if the narration server is down; original photo when no styled image returns; manual title/context with a visible notice when the analyze service is unreachable).
+* *Private by default* — books, memories, photos and people live locally in IndexedDB; photos leave the browser only to reach the Genius API and our own {{/api/*}} endpoints.
+
+----
+
 h2. 1. Photobook from a Memory (one tap)
 
 Open a Memory → *Create photobook*. No questions asked — it generates immediately with sensible defaults (*Retro Toons* style, *heartwarming* mood, *AI Storyteller*), folding the photos' date/place into the prompt automatically.
@@ -188,13 +199,31 @@ From the final page, *⤓ Share & export*:
 
 ----
 
-h2. How it works (brief)
+h2. Architecture
 
-React 18 + Vite SPA, served as a Capsyl‑style phone column. Generation and per‑photo edits
-call the *Genius Narration API*; narration, translation, perspective and the free‑form rewrites
-that power *bedtime / insights / auto title* go through our own {{/api/*}} endpoints
-(msedge‑tts + internal Qwen LLM). Saved books, memories, photos and people live locally in
-IndexedDB.
+The new Photobook layer is a *React 18 + Vite* SPA, served as a Capsyl‑style phone column.
+Generation and per‑photo edits call the *Genius Narration API*; narration, translation,
+perspective and the free‑form rewrites that power *bedtime / insights / auto title* go through
+our own {{/api/*}} endpoints (msedge‑tts + an internal Qwen LLM). Saved books, memories, photos
+and people live locally in IndexedDB.
+
+{noformat}
+   Create paths                         ┌─ Genius API ──────────────────────────┐
+   Memory ─┐                            │  /photobook        (generate + style) │
+   Photos ─┤ one tap (defaults)         │  /photo-chat       (edit · Q&A · ins.) │
+   Creator ┘ options + insights         │  /greeting-card                       │
+        │                               └───────────────────────────────────────┘
+        ▼                  generate                  ▲
+   App.jsx (view state machine) ──────────────────────┘
+        │  normalizeBook → perspective → (bedtime)
+        ▼
+   StoryViewer ── narration · translate · chat · edit · export
+        │                      │
+        ▼                      ▼
+   our /api/* (Node)     IndexedDB (books · photos · memories · people)
+   narrate (msedge‑tts)
+   translate · perspective · rewrite (Qwen)   ← bedtime · insights · auto‑title
+{noformat}
 
 ||Route||Purpose||Backed by||
 |POST /v1/genius/photobook|Generate a story from photos|Genius API|
@@ -203,9 +232,14 @@ IndexedDB.
 |POST /api/narrate|Narration audio|msedge‑tts|
 |POST /api/translate · /api/perspective · /api/rewrite|Translate · POV · rewrite (bedtime/insights/title)|internal LLM (Qwen)|
 
-*Deployment:* source in *Bitbucket / Stash*; a *Bamboo* plan builds the Docker image and
-deploys to *Kubernetes* (Helm chart in {{deployment/helm}}). One container runs
-{{server/index.js}}, serving the SPA *and* {{/api/*}}; {{/healthz}} backs the probes.
+*Tech stack:* React 18 + Vite 5, hand‑written CSS (no router — a small {{view}} state machine).
+Browser libs: {{exifr}} (EXIF/GPS), {{jspdf}} + {{html2canvas}} (PDF / cover), Canvas +
+{{MediaRecorder}} (in‑browser narrated video), Shape Detection {{FaceDetector}} (People).
+
+*Deployment:* source in *Bitbucket / Stash*; a *Bamboo* plan builds the Docker image, pushes it
+to *ECR*, and deploys to *Kubernetes* (Helm chart in {{deployment/helm}}, or a plain
+{{kubectl}} manifest for a new namespace). One container runs {{server/index.js}}, serving the
+SPA *and* {{/api/*}}; {{/healthz}} backs the probes. See the README for step‑by‑step install.
 
 {tip:title=Status}
 MVP complete and demo‑ready: photobook from Memory / Photos / scratch, page‑level and

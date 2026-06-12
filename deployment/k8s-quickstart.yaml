@@ -1,0 +1,75 @@
+# Photobook — minimal kubectl quick-deploy (no Helm) into a NEW namespace.
+#
+# Pulls the image from our ECR and runs the single container (Node server that
+# serves the SPA + /api/*). Edit the namespace / image tag below if needed, then:
+#
+#   kubectl apply -f deployment/k8s-quickstart.yaml
+#   kubectl -n photobook rollout status deploy/photobook
+#   kubectl -n photobook port-forward svc/photobook 8080:80
+#   # open http://localhost:8080
+#
+# To pin an exact build instead of :latest, replace the image tag with
+#   ...photobook-snapshots:snapshot-1.0.0-<git-sha>   (see `make show-config`)
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: photobook
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photobook
+  namespace: photobook
+  labels: { app: photobook }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: photobook }
+  template:
+    metadata:
+      labels: { app: photobook }
+    spec:
+      # Uncomment if the cluster nodes can't pull from ECR via IAM:
+      # imagePullSecrets:
+      #   - name: ecr-pull-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: photobook
+          image: 096016688168.dkr.ecr.us-east-1.amazonaws.com/sncr/bda/ml/photobook-snapshots:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5050
+          env:
+            - { name: PORT, value: "5050" }
+            # Optional: point the internal LLM (translate/perspective/rewrite) elsewhere.
+            # - { name: TRANSLATE_API_URL, value: "https://your-llm.example.com/v1" }
+            # - { name: TRANSLATE_MODEL, value: "qwen3" }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 5050 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: 5050 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: "1", memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: photobook
+  namespace: photobook
+  labels: { app: photobook }
+spec:
+  type: ClusterIP
+  selector: { app: photobook }
+  ports:
+    - port: 80
+      targetPort: 5050

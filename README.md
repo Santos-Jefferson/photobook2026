@@ -317,41 +317,107 @@ VITE_PHOTOBOOK_API_KEY=your-key
 ## ☸️ Deploy on Kubernetes (Docker + Helm)
 
 The Node server serves the built SPA **and** the `/api/*` endpoints, so it’s a
-**single container**.
+**single container**. One image, one port (`5050`), one `/healthz` probe.
+
+### Step 0 — prerequisites
+
+- `kubectl` configured against the cluster, and access to our ECR
+  (`096016688168.dkr.ecr.us-east-1.amazonaws.com`, region `us-east-1`).
+- The image already in ECR (pushed by the **Bamboo** plan, or `make ship` locally —
+  see [CI/CD](#-cicd-bitbucket--bamboo--kubernetes)). Repos:
+  - releases: `…/sncr/bda/ml/photobook-releases:<version>`
+  - snapshots: `…/sncr/bda/ml/photobook-snapshots:latest` (or `snapshot-<ver>-<sha>`)
+
+### Step 1 — (only if needed) build & push the image to ECR
+
+Normally Bamboo does this. To do it by hand:
 
 ```bash
-docker build -t your-registry/photobook:1.0.0 --build-arg APP_VERSION=1.0.0 .
-docker push your-registry/photobook:1.0.0
+aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin 096016688168.dkr.ecr.us-east-1.amazonaws.com
 
+make show-config     # prints the resolved image repo/tag
+make ship            # build + push the snapshot tag AND :latest
+```
+
+### Step 2 — deploy into a NEW namespace
+
+**Option A — plain `kubectl` (quickest).** A self-contained manifest
+(`deployment/k8s-quickstart.yaml`) creates the namespace, Deployment and Service and
+pulls the ECR image:
+
+```bash
+kubectl apply -f deployment/k8s-quickstart.yaml      # namespace "photobook"
+kubectl -n photobook rollout status deploy/photobook
+```
+
+> Change the namespace by editing the two `namespace:` fields (and the `Namespace`
+> name) at the top of the file, or render to a different one on the fly:
+> `sed 's/namespace: photobook/namespace: my-ns/; s/name: photobook$/name: my-ns/' deployment/k8s-quickstart.yaml | kubectl apply -f -`
+
+**Option B — Helm chart (adds Ingress + TLS).** Same image, full chart:
+
+```bash
 helm upgrade --install photobook deployment/helm/photobook \
-  --set image.repository=your-registry/photobook \
-  --set image.tag=1.0.0 \
-  --set ingress.enabled=true \
-  --set ingress.hosts[0].host=photobook.yourcompany.com \
-  --set ingress.hosts[0].paths[0].path=/ \
-  --set ingress.hosts[0].paths[0].pathType=Prefix
+  --namespace photobook --create-namespace \
+  --set image.repository=096016688168.dkr.ecr.us-east-1.amazonaws.com/sncr/bda/ml/photobook-snapshots \
+  --set image.tag=latest --set image.pullPolicy=Always
+```
+
+The bundled `deployment/helm/values-prod.yaml` has the production ingress (nginx-internal +
+external-dns + cert-manager). Reuse it with a different host for your namespace:
+
+```bash
+helm upgrade --install photobook deployment/helm/photobook \
+  --namespace photobook --create-namespace \
+  -f deployment/helm/values-prod.yaml \
+  --set ingress.hosts[0].host=photobook-demo.use.eks.mcap.sip.dev.cloud.synchronoss.net \
+  --set ingress.annotations.'external-dns\.alpha\.kubernetes\.io/hostname'=photobook-demo.use.eks.mcap.sip.dev.cloud.synchronoss.net \
+  --set tls[0].hosts[0]=photobook-demo.use.eks.mcap.sip.dev.cloud.synchronoss.net
+```
+
+### Step 3 — verify & open
+
+```bash
+kubectl -n photobook get pods,svc
+kubectl -n photobook logs deploy/photobook --tail=50
+# health check from inside the cluster:
+kubectl -n photobook exec deploy/photobook -- wget -qO- localhost:5050/healthz   # -> ok
+
+# no ingress? reach it locally via port-forward:
+kubectl -n photobook port-forward svc/photobook 8080:80
+# open http://localhost:8080
+```
+
+### Step 4 — update / roll back
+
+```bash
+# new :latest pushed by Bamboo — pull it:
+kubectl -n photobook rollout restart deploy/photobook
+
+# pin/rollback to an exact immutable build:
+kubectl -n photobook set image deploy/photobook \
+  photobook=096016688168.dkr.ecr.us-east-1.amazonaws.com/sncr/bda/ml/photobook-snapshots:snapshot-1.0.0-<sha>
+
+# tear down:
+kubectl delete namespace photobook        # or: helm -n photobook uninstall photobook
 ```
 
 The chart (`deployment/helm/photobook`) ships a Deployment (with `/healthz`
 liveness/readiness probes), Service, and optional Ingress. Tune `values.yaml` for
 replicas, resources, ingress/TLS, autoscaling, and env.
 
-A `Makefile` mirrors the company’s ECR/Helm‑OCI (Bamboo) flow:
-
-```bash
-make show-config     # print resolved image/tag/repo/versions
-make all             # build+push image, package+push helm chart
-make bump-patch      # bump app version (also bump-minor)
-```
-
 Things to know:
-- **`VITE_*` are build‑time** — pass as `--build-arg`, not runtime env (they end up
-  in the public bundle).
-- **No runtime secrets needed** — narration/translation are key‑less.
-- **Egress:** pods need outbound internet for the voice/LLM services (or set
-  `HTTPS_PROXY`).
-- **Genius API reachability:** the browser calls it directly, so users must be able
-  to reach that host.
+- **`VITE_*` are build‑time** — passed as `--build-arg` (they end up in the public
+  bundle); not runtime env.
+- **No runtime secrets needed** — narration/translation default to key‑less in‑cluster
+  services.
+- **Image pull:** if the nodes can’t pull from ECR via IAM, create an `ecr-pull-secret`
+  and reference it (see the commented `imagePullSecrets` in the quickstart manifest).
+- **Egress:** pods need outbound access to the voice/LLM services (or set `HTTPS_PROXY`
+  via `env` in the chart).
+- **Genius API reachability:** the browser calls it directly, so users must be able to
+  reach that host.
 
 ---
 
