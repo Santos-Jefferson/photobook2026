@@ -3353,3 +3353,26 @@ button {
   border-radius: 14px;
   margin-bottom: 8px;
 }
+
+/* Share-link result panel */
+.share-opt-primary {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+.share-link-url {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg-soft);
+  margin-bottom: 8px;
+}
+.share-link-err {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 4px 0 0;
+}

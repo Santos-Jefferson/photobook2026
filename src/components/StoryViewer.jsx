@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildSlides } from '../book'
 import { downloadStoryHtml } from '../share'
-import { downloadStoryPdf, downloadStoryVideo, shareToWhatsApp, shareToInstagram } from '../export'
+import { downloadStoryPdf, downloadStoryVideo, createShareLink } from '../export'
 import { useNarration, NARRATION_LANGS, VOICE_OPTIONS } from '../narration'
 import { translateBook } from '../translateClient'
 import { saveBook } from '../bookStorage'
@@ -24,6 +24,8 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved, onReg
   const [translations, setTranslations] = useState({}) // lang -> translated book
   const [sharing, setSharing] = useState(false) // an export/share is in progress
   const [shareMenu, setShareMenu] = useState(false) // export options popover open
+  const [shareResult, setShareResult] = useState(null) // { pageUrl, mp4Url } | { error:true }
+  const [shareErr, setShareErr] = useState('')
   const [narrateMenu, setNarrateMenu] = useState(false) // language/voice sheet open
   const [saveState, setSaveState] = useState('') // '' | saving | saved | error
   // Re-style the whole photobook (new art style + mood) from the closing page.
@@ -122,7 +124,30 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved, onReg
     }
   }
 
+  // Build a hosted MP4 + story page, then show the link + destinations.
+  async function runShareLink() {
+    if (sharing) return
+    setShareMenu(false)
+    setShareErr('')
+    setSharing(true)
+    try {
+      const r = await createShareLink(displayBook, { lang: narration.lang, voice: narration.voice })
+      setShareResult(r)
+    } catch (e) {
+      setShareErr(e.message || String(e))
+      setShareResult({ error: true })
+    } finally {
+      setSharing(false)
+    }
+  }
+
   const exportOptions = [
+    {
+      key: 'share-link',
+      label: 'Share link (Instagram · WhatsApp)',
+      icon: '🔗',
+      run: runShareLink,
+    },
     { key: 'pdf', label: 'Download PDF', icon: '📄', run: () => downloadStoryPdf(displayBook) },
     {
       key: 'video',
@@ -136,18 +161,6 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved, onReg
       label: 'Export Photobook',
       icon: '📖',
       run: () => downloadStoryHtml(displayBook, textLang || 'en', narration.voice),
-    },
-    {
-      key: 'whatsapp',
-      label: 'Share to WhatsApp',
-      icon: '🟢',
-      run: () => shareToWhatsApp(displayBook, { lang: narration.lang, voice: narration.voice }),
-    },
-    {
-      key: 'instagram',
-      label: 'Share to Instagram',
-      icon: '📸',
-      run: () => shareToInstagram(displayBook, { lang: narration.lang, voice: narration.voice }),
     },
   ]
 
@@ -274,7 +287,12 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved, onReg
           <div className="share-sheet" role="menu" onClick={(e) => e.stopPropagation()}>
             <div className="share-sheet-title">Share &amp; export</div>
             {exportOptions.map((o) => (
-              <button key={o.key} className="share-opt" role="menuitem" onClick={() => runExport(o.run)}>
+              <button
+                key={o.key}
+                className={`share-opt ${o.key === 'share-link' ? 'share-opt-primary' : ''}`}
+                role="menuitem"
+                onClick={() => (o.key === 'share-link' ? o.run() : runExport(o.run))}
+              >
                 <span className="share-opt-ico" aria-hidden="true">
                   {o.icon}
                 </span>
@@ -283,6 +301,61 @@ export default function StoryViewer({ book, onExit, savedId = '', onSaved, onReg
             ))}
             <button className="share-sheet-close" onClick={() => setShareMenu(false)}>
               Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Result of "Share link": the hosted page URL + destinations. */}
+      {shareResult && (
+        <div className="share-sheet-backdrop" onClick={() => setShareResult(null)}>
+          <div className="share-sheet" role="menu" onClick={(e) => e.stopPropagation()}>
+            {shareResult.error ? (
+              <>
+                <div className="share-sheet-title">Couldn’t create the link</div>
+                <p className="share-link-err">{shareErr}</p>
+              </>
+            ) : (
+              <>
+                <div className="share-sheet-title">Your share link</div>
+                <input
+                  className="share-link-url"
+                  readOnly
+                  value={shareResult.pageUrl}
+                  onFocus={(e) => e.target.select()}
+                />
+                <button
+                  className="share-opt"
+                  onClick={() => navigator.clipboard && navigator.clipboard.writeText(shareResult.pageUrl)}
+                >
+                  <span className="share-opt-ico">📋</span> Copy link
+                </button>
+                <a
+                  className="share-opt share-opt-primary"
+                  href={shareResult.pageUrl}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span className="share-opt-ico">📸</span> Open to post on Instagram
+                </a>
+                <a
+                  className="share-opt"
+                  href={
+                    'https://wa.me/?text=' +
+                    encodeURIComponent(((displayBook && displayBook.title) || 'Our Story') + ' — ' + shareResult.pageUrl)
+                  }
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span className="share-opt-ico">🟢</span> Share on WhatsApp
+                </a>
+                <a className="share-opt" href={shareResult.mp4Url} download>
+                  <span className="share-opt-ico">⬇</span> Download MP4
+                </a>
+              </>
+            )}
+            <button className="share-sheet-close" onClick={() => setShareResult(null)}>
+              Close
             </button>
           </div>
         </div>

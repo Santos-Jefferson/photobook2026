@@ -761,3 +761,27 @@ export async function shareToInstagram(book, opts) {
   const title = (book && book.title) || 'Our Story'
   await shareVideoOrCover(book, title, '', opts)
 }
+
+// Render the narrated video, upload it, and get back a hosted MP4 + story page.
+// The page has rich link previews (WhatsApp) and a "Share to Instagram" button
+// that hands over the real MP4. Returns { id, pageUrl, mp4Url } or throws.
+export async function createShareLink(book, opts) {
+  const blob = await buildStoryVideoBlob(book, opts)
+  if (!blob) throw new Error("This browser can't record the share video.")
+  const title = (book && book.title) || 'Our Story'
+  const res = await fetch('/api/share?title=' + encodeURIComponent(title), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: blob,
+  })
+  if (!res.ok) {
+    let detail = ''
+    try {
+      detail = (await res.json()).error || ''
+    } catch {
+      /* ignore */
+    }
+    throw new Error(res.status === 501 ? 'Video transcoding (ffmpeg) is not available on the server.' : 'share ' + res.status + (detail ? ': ' + detail : ''))
+  }
+  return res.json()
+}

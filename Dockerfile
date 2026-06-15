@@ -30,6 +30,9 @@ ARG APP_VERSION=0.0.0
 LABEL org.opencontainers.image.title="photobook" \
       org.opencontainers.image.version="${APP_VERSION}"
 
+# ffmpeg: transcodes the rendered WebM share video to MP4 (for /api/share).
+RUN apk add --no-cache ffmpeg
+
 # Production deps only (server uses msedge-tts + undici; the rest is bundled
 # into dist/ already).
 COPY package*.json ./

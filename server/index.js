@@ -14,8 +14,33 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setGlobalDispatcher, ProxyAgent } from 'undici'
 import { getNarrationAudio, translateMany, rewritePerspective, rewriteWithInstruction } from '../lib/narrate.js'
+import { putShare, getShare, storyPageHtml } from '../lib/shareStore.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Read a raw (binary) request body — used for the uploaded share video.
+function readRawBody(req, max = 80_000_000) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    let len = 0
+    req.on('data', (c) => {
+      len += c.length
+      if (len > max) {
+        reject(new Error('body too large'))
+        req.destroy()
+        return
+      }
+      chunks.push(c)
+    })
+    req.on('end', () => resolve(Buffer.concat(chunks)))
+    req.on('error', reject)
+  })
+}
+
+function originOf(req) {
+  const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0] || 'http'
+  return proto + '://' + (req.headers['x-forwarded-host'] || req.headers.host || 'localhost')
+}
 
 // --- tiny .env.local loader (so we don't need dotenv) ---
 function loadEnvLocal() {
@@ -173,6 +198,51 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: String(e && e.message ? e.message : e) }))
+    }
+    return
+  }
+
+  // --- share: upload a rendered video, get a hosted MP4 + story page ---
+  if (url.pathname === '/api/share' && req.method === 'POST') {
+    try {
+      const buf = await readRawBody(req)
+      const id = await putShare(buf, url.searchParams.get('title') || 'Our Story')
+      const origin = originOf(req)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ id, pageUrl: `${origin}/s/${id}`, mp4Url: `${origin}/s/${id}.mp4` }))
+    } catch (e) {
+      const msg = String(e && e.message ? e.message : e)
+      const status = /ENOENT|ffmpeg/.test(msg) ? 501 : 500
+      res.writeHead(status, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: msg }))
+    }
+    return
+  }
+  // --- public story page + media (/s/:id, /s/:id.mp4, /s/:id.jpg) ---
+  if (url.pathname.startsWith('/s/')) {
+    const rest = url.pathname.slice(3)
+    const mp4 = rest.endsWith('.mp4')
+    const jpg = rest.endsWith('.jpg')
+    const id = rest.replace(/\.(mp4|jpg)$/, '')
+    const rec = getShare(id)
+    if (!rec) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' })
+      res.end('This share link has expired.')
+      return
+    }
+    if (mp4) {
+      res.writeHead(200, { 'Content-Type': 'video/mp4', 'Cache-Control': 'public, max-age=3600' })
+      res.end(rec.mp4)
+    } else if (jpg) {
+      if (!rec.poster) {
+        res.writeHead(404).end()
+        return
+      }
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=3600' })
+      res.end(rec.poster)
+    } else {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+      res.end(storyPageHtml(id, originOf(req)))
     }
     return
   }
