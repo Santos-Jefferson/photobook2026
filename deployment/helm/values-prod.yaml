@@ -23,7 +23,7 @@ ingress:
     external-dns.alpha.kubernetes.io/hostname: photobook.use.eks.mcap.sip.dev.cloud.synchronoss.net
     external-dns.alpha.kubernetes.io/target: sip-eks-mcap-use-dev-dft-nlb-6ef2d80b0cc8f2d3.elb.us-east-1.amazonaws.com
     nginx.ingress.kubernetes.io/enable-cors: "true"
-    nginx.ingress.kubernetes.io/proxy-body-size: 30m
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
   hosts:
     - host: photobook.use.eks.mcap.sip.dev.cloud.synchronoss.net

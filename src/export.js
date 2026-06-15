@@ -344,7 +344,10 @@ export async function buildStoryVideoBlob(book, { lang = 'en', voice = 'female',
     dest = audioCtx.createMediaStreamDestination()
     tracks.push(...dest.stream.getAudioTracks())
   }
-  const rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: 5_000_000 })
+  // 2.5 Mbps keeps a 1080×1920 short clip sharp while keeping the upload small
+  // (the server re-encodes to MP4 anyway). Higher bitrates blew past the ingress
+  // body limit and 413'd on share.
+  const rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: 2_500_000 })
   const chunks = []
   rec.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data)
   const stopped = new Promise((res) => (rec.onstop = res))
@@ -781,7 +784,9 @@ export async function createShareLink(book, opts) {
     } catch {
       /* ignore */
     }
-    throw new Error(res.status === 501 ? 'Video transcoding (ffmpeg) is not available on the server.' : 'share ' + res.status + (detail ? ': ' + detail : ''))
+    if (res.status === 501) throw new Error('Video transcoding (ffmpeg) is not available on the server.')
+    if (res.status === 413) throw new Error('The video is too large to upload — raise the server/ingress upload limit (proxy-body-size) or shorten the story.')
+    throw new Error('share ' + res.status + (detail ? ': ' + detail : ''))
   }
   return res.json()
 }
