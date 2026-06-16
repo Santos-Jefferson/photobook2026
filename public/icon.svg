@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0aa1dd"/>
+  <!-- open book -->
+  <path fill="#ffffff" d="M256 168c-40-22-94-22-138-6a16 16 0 0 0-10 15v176a12 12 0 0 0 17 11c40-15 90-15 127 5a16 16 0 0 0 8 0c37-20 87-20 127-5a12 12 0 0 0 17-11V177a16 16 0 0 0-10-15c-44-16-98-16-138 6z"/>
+  <path stroke="#0aa1dd" stroke-width="14" stroke-linecap="round" d="M256 172v196"/>
+  <!-- little sun + horizon, hinting "photos" -->
+  <circle cx="194" cy="226" r="14" fill="#0aa1dd"/>
+  <path stroke="#0aa1dd" stroke-width="10" stroke-linecap="round" d="M168 300l30-26 22 16 30-30"/>
+</svg>

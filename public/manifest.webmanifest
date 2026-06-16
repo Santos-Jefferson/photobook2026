@@ -1,0 +1,14 @@
+{
+  "name": "Photobook",
+  "short_name": "Photobook",
+  "description": "Turn your photos into a narrated, swipeable photo book story.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#dfe7ef",
+  "theme_color": "#0aa1dd",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

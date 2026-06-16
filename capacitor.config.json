@@ -1,0 +1,9 @@
+{
+  "appId": "net.synchronoss.photobook",
+  "appName": "Photobook",
+  "webDir": "dist",
+  "server": {
+    "url": "https://photobook.use.eks.mcap.sip.dev.cloud.synchronoss.net",
+    "cleartext": false
+  }
+}
